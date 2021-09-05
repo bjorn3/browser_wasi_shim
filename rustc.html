@@ -2,6 +2,99 @@
 <script type="module">
     import * as wasi from "./wasi_defs.js";
 
+    class Fd {
+        fd_advise(offset, len, advice) {
+            return -1;
+        }
+        fd_allocate(offset, len) {
+            return -1;
+        }
+        fd_close() {
+            return -1;
+        }
+        fd_datasync() {
+            return -1;
+        }
+        fd_fdstat_get() {
+            return { ret: -1, fdstat: null };
+        }
+        fd_fdstat_set_flags(flags) {
+            return -1;
+        }
+        fd_fdstat_set_rights(fs_rights_base, fs_rights_inheriting) {
+            return -1;
+        }
+        fd_filestat_get() {
+            return { ret: -1, filestat: null };
+        }
+        fd_filestat_set_size(size) {
+            return -1;
+        }
+        fd_filestat_set_times(atim, mtim, fst_flags) {
+            return -1;
+        }
+        fd_pread(view8, iovs, offset) {
+            return { ret: -1, nread: 0 };
+        }
+        fd_prestat_get() {
+            return { ret: -1, prestat: null };
+        }
+        fd_prestat_dir_name(path_ptr, path_len) {
+            return { ret: -1, prestat_dir_name: null };
+        }
+        fd_pwrite(view8, iovs, offset) {
+            return { ret: -1, nwritten: 0 };
+        }
+        fd_read(view8, iovs) {
+            return { ret: -1, nread: 0 };
+        }
+        fd_readdir_single(cookie) {
+            return { ret: -1, dirent: null };
+        }
+        fd_seek(offset, whence) {
+            return { ret: -1, offset: 0 };
+        }
+        fd_sync() {
+            return -1;
+        }
+        fd_tell() {
+            return { ret: -1, offset: 0 };
+        }
+        fd_write(view8, iovs) {
+            return { ret: -1, nwritten: 0 };
+        }
+        path_create_directory(path) {
+            return -1;
+        }
+        path_filestat_get(flags, path) {
+            return { ret: -1, filestat: null };
+        }
+        path_filestat_set_times(flags, path, atim, mtim, fst_flags) {
+            return -1;
+        }
+        path_link(old_fd, old_flags, old_path, new_path) {
+            return -1;
+        }
+        path_open(dirflags, path, oflags, fs_rights_base, fs_rights_inheriting, fdflags) {
+            return { ret: -1, fd_obj: null };
+        }
+        path_readlink(path) {
+            return { ret: -1, data: null };
+        }
+        path_remove_directory(path) {
+            return -1;
+        }
+        path_rename(old_path, new_fd, new_path) {
+            return -1;
+        }
+        path_symlink(old_path, new_path) {
+            return -1;
+        }
+        path_unlink_file(path) {
+            return -1;
+        }
+    }
+
     class File {
         constructor(data) {
             console.log(data);
@@ -25,10 +118,11 @@
         }
     }
 
-    class OpenFile {
+    class OpenFile extends Fd {
         file_type = wasi.FILETYPE_REGULAR_FILE;
 
         constructor(file) {
+            super();
             this.file = file;
             this.file_pos = 0;
         }
@@ -45,6 +139,19 @@
             } else {
                 return [[], 0];
             }
+        }
+
+        fd_read(view8, iovs) {
+            let nread = 0;
+            for (let iovec of iovs) {
+                let [data, err] = this.read(iovec.buf_len);
+                if (err != 0) {
+                    return { ret: err, nread };
+                }
+                view8.set(data, iovec.buf);
+                nread += data.length;
+            }
+            return { ret: 0, nread };
         }
 
         write(buffer) {
@@ -64,16 +171,71 @@
             return 0;
         }
 
-        stat() {
-            return this.file.stat();
+        fd_write(view8, iovs) {
+            let nwritten = 0;
+            for (let iovec of iovs) {
+                console.log(iovec.buf_len, iovec.buf_len, view8.slice(iovec.buf, iovec.buf + iovec.buf_len));
+                let err = this.write(view8.slice(iovec.buf, iovec.buf + iovec.buf_len));
+                if (err != 0) {
+                    return { ret: err, nwritten };
+                }
+                nwritten += iovec.buf_len;
+            }
+            return { ret: 0, nwritten };
+        }
+
+        fd_filestat_get() {
+            return { ret: 0, stat: this.file.stat() };
         }
     }
 
-    class Directory {
+    class Directory extends Fd {
         file_type = wasi.FILETYPE_DIRECTORY;
 
         constructor(contents) {
+            super();
             this.directory = contents;
+        }
+
+        fd_readdir_single(cookie) {
+            console.log(cookie, Object.keys(this.directory).slice(Number(cookie)));
+            if (cookie >= BigInt(Object.keys(this.directory).length)) {
+                return { ret: 0, dirent: null };
+            }
+
+            let name = Object.keys(this.directory)[Number(cookie)];
+            let entry = this.directory[name];
+            let encoded_name = new TextEncoder("utf-8").encode(name);
+
+            return { ret: 0, dirent: new wasi.Dirent(cookie + 1n, name, entry.file_type) };
+        }
+
+        path_filestat_get(flags, path) {
+            let entry = this.get_entry_for_path(path);
+            if (entry == null) {
+                return { ret: -1, filestat: null };
+            }
+            return { ret: 0, filestat: entry.stat() };
+        }
+
+        path_open(dirflags, path, oflags, fs_rights_base, fs_rights_inheriting, fd_flags) {
+            let entry = this.get_entry_for_path(path);
+            if (entry == null) {
+                if (oflags & wasi.OFLAGS_CREAT == wasi.OFLAGS_CREAT) {
+                    entry = this.create_entry_for_path(path);
+                } else {
+                    return { ret: -1, fd_obj: null };
+                }
+            } else if (oflags & wasi.OFLAGS_EXCL == wasi.OFLAGS_EXCL) {
+                return { ret: -1, fd_obj: null };
+            }
+            if (oflags & wasi.OFLAGS_DIRECTORY == wasi.OFLAGS_DIRECTORY && entry.file_type != wasi.FILETYPE_DIRECTORY) {
+                return { ret: -1, fd_obj: null };
+            }
+            if (oflags & wasi.OFLAGS_TRUNC == wasi.OFLAGS_TRUNC) {
+                entry.truncate();
+            }
+            return { ret: 0, fd_obj: entry.open() };
         }
 
         open() {
@@ -113,6 +275,10 @@
             }
             return entry;
         }
+
+        stat() {
+            return new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0);
+        }
     }
 
     class PreopenDirectory extends Directory {
@@ -120,9 +286,21 @@
             super(contents);
             this.prestat_name = new TextEncoder("utf-8").encode(name);
         }
+
+        fd_prestat_get() {
+            return {
+                ret: 0, prestat: wasi.Prestat.dir(this.prestat_name.length)
+            };
+        }
+
+        fd_prestat_dir_name() {
+            return {
+                ret: 0, prestat_dir_name: this.prestat_name
+            };
+        }
     }
 
-    class Stdio {
+    class Stdio extends Fd {
         file_type = wasi.FILETYPE_UNKNOWN;
 
         read(len) {
@@ -132,6 +310,19 @@
         write(buffer) {
             document.body.innerText += new TextDecoder("utf-8").decode(buffer);
             return 0;
+        }
+
+        fd_write(view8, iovs) {
+            let nwritten = 0;
+            for (let iovec of iovs) {
+                console.log(iovec.buf_len, iovec.buf_len, view8.slice(iovec.buf, iovec.buf + iovec.buf_len));
+                let err = this.write(view8.slice(iovec.buf, iovec.buf + iovec.buf_len));
+                if (err != 0) {
+                    return { ret: err, nwritten };
+                }
+                nwritten += iovec.buf_len;
+            }
+            return { ret: 0, nwritten };
         }
     }
 
@@ -208,11 +399,10 @@
                 }),
             }),
         ];
+        window.fds = fds;
 
         let inst = await WebAssembly.instantiate(wasm, {
             "wasi_snapshot_preview1": {
-                proc_exit() { console.log("proc_exit"); },
-                random_get() { console.log("random_get"); },
                 args_sizes_get(argc, argv_buf_size) {
                     let buffer = new DataView(inst.exports.memory.buffer);
                     console.log("args_sizes_get(", argc, ", ", argv_buf_size, ")");
@@ -271,18 +461,143 @@
                     return 0;
                 },
 
+                clock_res_get(id, res_ptr) {
+                    throw "unimplemented";
+                },
                 clock_time_get(id, precision, time) {
                     let buffer = new DataView(inst.exports.memory.buffer);
                     //console.log("clock_time_get(", id, ", ", precision, ", ", time, ")");
                     buffer.setBigUint64(time, 0n, true);
                     return 0;
                 },
-                fd_close() { console.log("fd_close"); },
-                fd_filestat_get(fd, buf) {
-                    console.warn("fd_filestat_get(", fd, ", ", buf, ")");
+
+                fd_advise(fd, offset, len, advice) {
                     if (fds[fd] != undefined) {
-                        fds[fd].stat().write_bytes(new DataView(inst.exports.memory.buffer), buf);
-                        return 0;
+                        return fds[fd].fd_advise(offset, len, advice);
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_allocate(fd, offset, len) {
+                    if (fds[fd] != undefined) {
+                        return fds[fd].fd_allocate(offset, len);
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_close(fd) {
+                    if (fds[fd] != undefined) {
+                        let ret = fds[fd].fd_close();
+                        fds[fd] = undefined;
+                        return ret;
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_datasync(fd) {
+                    if (fds[fd] != undefined) {
+                        return fds[fd].fd_datasync();
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_fdstat_get(fd, fdstat_ptr) {
+                    if (fds[fd] != undefined) {
+                        let { ret, fdstat } = fds[fd].fd_fdstat_get();
+                        if (fdstat != null) {
+                            fdstat.write_bytes(new DataView(inst.exports.memory.buffer), fdstat_ptr);
+                        }
+                        return ret;
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_fdstat_set_flags(fd, flags) {
+                    if (fds[fd] != undefined) {
+                        return fds[fd].fd_fdstat_set_flags(flags);
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_fdstat_set_rights(fd, rights) {
+                    if (fds[fd] != undefined) {
+                        return fds[fd].fd_fdstat_set_rights(rights);
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_filestat_get(fd, filestat_ptr) {
+                    if (fds[fd] != undefined) {
+                        let { ret, filestat } = fds[fd].fd_filestat_get();
+                        if (filestat != null) {
+                            filestat.write_bytes(new DataView(inst.exports.memory.buffer), filestat_ptr);
+                        }
+                        return ret;
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_filestat_set_size(fd, size) {
+                    if (fds[fd] != undefined) {
+                        return fds[fd].fd_filestat_set_size(size);
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_filestat_set_times(fd, atim, mtim, fst_flags) {
+                    if (fds[fd] != undefined) {
+                        return fds[fd].fd_filestat_set_times(atim, mtim, fst_flags);
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_pread(fd, iovs_ptr, iovs_len, offset, nread_ptr) {
+                    let buffer = new DataView(inst.exports.memory.buffer);
+                    let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                    if (fds[fd] != undefined) {
+                        let iovecs = wasi.Iovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
+                        let { ret, nread } = fds[fd].fd_pread(buffer8, iovecs, offset);
+                        buffer.setUint32(nread_ptr, nread, true);
+                        return ret;
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_prestat_get(fd, buf_ptr) {
+                    let buffer = new DataView(inst.exports.memory.buffer);
+                    console.log("fd_prestat_get(", fd, ", ", buf_ptr, ")");
+                    if (fds[fd] != undefined) {
+                        let { ret, prestat } = fds[fd].fd_prestat_get();
+                        if (prestat != null) {
+                            prestat.write_bytes(buffer, buf_ptr);
+                        }
+                        return ret;
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_prestat_dir_name(fd, path_ptr, path_len) {
+                    // FIXME don't ignore path_len
+                    console.log("fd_prestat_dir_name(", fd, ", ", path_ptr, ", ", path_len, ")");
+                    if (fds[fd] != undefined && fds[fd].prestat_name != undefined) {
+                        let { ret, prestat_dir_name } = fds[fd].fd_prestat_dir_name();
+                        if (prestat_dir_name != null) {
+                            let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                            buffer8.set(prestat_dir_name, path_ptr);
+                        }
+                        return ret;
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_pwrite(fd, iovs_ptr, iovs_len, offset, nwritten_ptr) {
+                    let buffer = new DataView(inst.exports.memory.buffer);
+                    let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                    if (fds[fd] != undefined) {
+                        let iovecs = wasi.Ciovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
+                        let { ret, nwritten } = fds[fd].fd_pwrite(buffer8, iovecs, offsets);
+                        buffer.setUint32(nwritten_ptr, nwritten, true);
+                        return ret;
                     } else {
                         return -1;
                     }
@@ -290,171 +605,231 @@
                 fd_read(fd, iovs_ptr, iovs_len, nread_ptr) {
                     let buffer = new DataView(inst.exports.memory.buffer);
                     let buffer8 = new Uint8Array(inst.exports.memory.buffer);
-                    //console.log("fd_read(", fd, ", ", iovs_ptr, ", ", iovs_len, ", ", nread_ptr, ")");
                     if (fds[fd] != undefined) {
-                        buffer.setUint32(nread_ptr, 0, true);
                         let iovecs = wasi.Iovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
-                        for (let iovec of iovecs) {
-                            let [data, err] = fds[fd].read(iovec.buf_len);
-                            if (err != 0) {
-                                return err;
-                            }
-                            buffer8.set(data, iovec.buf);
-                            buffer.setUint32(nread_ptr, buffer.getUint32(nread_ptr, true) + data.length, true);
-                        }
-                        return 0;
+                        let { ret, nread } = fds[fd].fd_read(buffer8, iovecs);
+                        buffer.setUint32(nread_ptr, nread, true);
+                        return ret;
                     } else {
                         return -1;
                     }
                 },
-                fd_readdir(fd, buf, buf_len, cookie, bufused) {
+                fd_readdir(fd, buf, buf_len, cookie, bufused_ptr) {
                     let buffer = new DataView(inst.exports.memory.buffer);
                     let buffer8 = new Uint8Array(inst.exports.memory.buffer);
-                    console.warn("fd_readdir(", fd, ", ", buf, ", ", buf_len, ", ", cookie, ", ", bufused, ")");
-                    // 8 ,  3408816 ,  128 ,  0n ,  1032332
                     if (fds[fd] != undefined && fds[fd].directory != undefined) {
-                        buffer.setUint32(bufused, 0, true);
+                        let bufused = 0;
 
-                        console.log(cookie, Object.keys(fds[fd].directory).slice(Number(cookie)));
-                        if (cookie >= BigInt(Object.keys(fds[fd].directory).length)) {
-                            console.log("end of dir");
-                            return 0;
-                        }
-                        let next_cookie = cookie + 1n;
-                        for (let name of Object.keys(fds[fd].directory).slice(Number(cookie))) {
-                            let entry = fds[fd].directory[name];
-                            console.log(name, entry);
-                            let encoded_name = new TextEncoder("utf-8").encode(name);
-
-                            let dirent = new wasi.Dirent(next_cookie, name, entry.file_type);
+                        while (true) {
+                            let { ret, dirent } = fds[fd].fd_readdir_single(cookie);
+                            if (ret != 0) {
+                                buffer.setUint32(bufused_ptr, bufused, true);
+                                return ret;
+                            }
+                            if (dirent == null) {
+                                break;
+                            }
                             let offset = dirent.length();
 
-                            if ((buf_len - buffer.getUint32(bufused, true)) < offset) {
-                                console.log("too small buf");
+                            if ((buf_len - bufused) < offset) {
                                 break;
-                            } else {
-                                console.log("next_cookie =", next_cookie, buf);
-                                next_cookie += 1n;
-                                dirent.write_bytes(buffer, buffer8, buf);
-                                console.log("buffer =", buffer8.slice(buf, buf + offset));
-                                buf += offset;
-                                buffer.setUint32(bufused, buffer.getUint32(bufused, true) + offset, true);
-                                console.log();
                             }
+
+                            dirent.write_bytes(buffer, buffer8, buf);
+                            buf += offset;
+                            bufused += offset;
+                            cookie = dirent.d_next;
                         }
-                        console.log("used =", buffer.getUint32(bufused, true));
+
+                        buffer.setUint32(bufused_ptr, bufused, true);
                         return 0;
                     } else {
                         return -1;
                     }
                 },
-                fd_seek() { console.log("fd_seek"); },
+                fd_renumber(fd, to) {
+                    if (fds[fd] != undefined && fds[to] != undefined) {
+                        let ret = fds[to].fd_close()
+                        if (ret != 0) {
+                            return ret;
+                        }
+                        fds[to] = fds[fd];
+                        fds[fd] = undefined;
+                        return 0;
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_seek(fd, offset, whence, offset_out_ptr) {
+                    if (fds[fd] != undefined) {
+                        let { ret, offset } = fds[fd].fd_seek(offset, whence);
+                        buffer.setUint32(offset_out_ptr, offset_out, true);
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_sync(fd) {
+                    if (fds[fd] != undefined) {
+                        return fds[fd].fd_sync();
+                    } else {
+                        return -1;
+                    }
+                },
+                fd_tell(fd, offset_ptr) {
+                    if (fds[fd] != undefined) {
+                        let { ret, offset } = fds[fd].fd_tell();
+                        buffer.setUint32(offset_ptr, offset, true);
+                    } else {
+                        return -1;
+                    }
+                },
                 fd_write(fd, iovs_ptr, iovs_len, nwritten_ptr) {
                     let buffer = new DataView(inst.exports.memory.buffer);
                     let buffer8 = new Uint8Array(inst.exports.memory.buffer);
-                    //console.log("fd_write(", fd, ", ", iovs_ptr, ", ", iovs_len, ", ", nwritten_ptr, ")");
                     if (fds[fd] != undefined) {
-                        buffer.setUint32(nwritten_ptr, 0, true);
                         let iovecs = wasi.Ciovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
-                        for (let iovec of iovecs) {
-                            console.log(iovec.buf_len, iovec.buf_len, buffer8.slice(iovec.buf, iovec.buf + iovec.buf_len));
-                            let err = fds[fd].write(buffer8.slice(iovec.buf, iovec.buf + iovec.buf_len));
-                            if (err != 0) {
-                                return err;
-                            }
-                            buffer.setUint32(nwritten_ptr, buffer.getUint32(nwritten_ptr, true) + iovec.buf_len, true);
-                        }
-                        return 0;
+                        let { ret, nwritten } = fds[fd].fd_write(buffer8, iovecs);
+                        buffer.setUint32(nwritten_ptr, nwritten, true);
+                        return ret;
                     } else {
                         return -1;
                     }
                 },
-                path_create_directory() {
-                    console.log("path_create_directory");
-                },
-                path_filestat_get(fd, flags, path_ptr, path_len, buf) {
-                    let buffer = new DataView(inst.exports.memory.buffer);
+                path_create_directory(fd, path_ptr, path_len) {
                     let buffer8 = new Uint8Array(inst.exports.memory.buffer);
-                    console.warn("path_filestat_get(", fd, ", ", flags, ", ", path_ptr, ", ", path_len, ", ", buf, ")");
-                    if (fds[fd] != undefined && fds[fd].directory != undefined) {
+                    if (fds[fd] != undefined) {
                         let path = new TextDecoder("utf-8").decode(buffer8.slice(path_ptr, path_ptr + path_len));
-                        console.log("file =", path);
-                        let entry = fds[fd].get_entry_for_path(path);
-                        if (entry == null) {
-                            return -1;
+                        return fds[fd].path_create_directory(path);
+                    }
+                },
+                path_filestat_get(fd, flags, path_ptr, path_len, filestat_ptr) {
+                    let buffer = new DataView(inst.exports.memory.buffer);
+                    let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                    if (fds[fd] != undefined) {
+                        let path = new TextDecoder("utf-8").decode(buffer8.slice(path_ptr, path_ptr + path_len));
+                        let { ret, filestat } = fds[fd].path_filestat_get(flags, path);
+                        if (filestat != null) {
+                            filestat.write_bytes(buffer, filestat_ptr);
                         }
-                        // FIXME write filestat_t
-                        return 0;
+                        return ret;
                     } else {
                         return -1;
                     }
                 },
-                path_link() { console.log("path_link"); },
-                path_open(fd, dirflags, path_ptr, path_len, oflags, fs_rights_base, fs_rights_inheriting, fdflags, opened_fd_ptr) {
+                path_filestat_set_times(fd, flags, path_ptr, path_len, atim, mtim, fst_flags) {
+                    let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                    if (fds[fd] != undefined) {
+                        let path = new TextDecoder("utf-8").decode(buffer8.slice(path_ptr, path_ptr + path_len));
+                        return fds[fd].path_filestat_set_times(flags, path, atim, mtim, fst_flags);
+                    } else {
+                        return -1;
+                    }
+                },
+                path_link(old_fd, old_flags, old_path_ptr, old_path_len, new_fd, new_path_ptr, new_path_len) {
+                    let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                    if (fds[old_fd] != undefined && fds[new_fs] != undefined) {
+                        let old_path = new TextDecoder("utf-8").decode(buffer8.slice(old_path_ptr, old_path_ptr + old_path_len));
+                        let new_path = new TextDecoder("utf-8").decode(buffer8.slice(new_path_ptr, new_path_ptr + new_path_len));
+                        return fds[new_fd].path_link(old_fd, old_flags, old_path, new_path);
+                    } else {
+                        return -1;
+                    }
+                },
+                path_open(fd, dirflags, path_ptr, path_len, oflags, fs_rights_base, fs_rights_inheriting, fd_flags, opened_fd_ptr) {
                     let buffer = new DataView(inst.exports.memory.buffer);
                     let buffer8 = new Uint8Array(inst.exports.memory.buffer);
-                    console.log("path_open(",
-                        dirflags, ", ",
-                        path_ptr, ", ",
-                        path_len, ", ",
-                        oflags, ", ",
-                        fs_rights_base, ", ",
-                        fs_rights_inheriting, ", ",
-                        fdflags, ", ",
-                        opened_fd_ptr, ")",
-                    );
-                    if (fds[fd] != undefined && fds[fd].directory != undefined) {
+                    if (fds[fd] != undefined) {
                         let path = new TextDecoder("utf-8").decode(buffer8.slice(path_ptr, path_ptr + path_len));
                         console.log(path);
-                        let entry = fds[fd].get_entry_for_path(path);
-                        if (entry == null) {
-                            if (oflags & wasi.OFLAGS_CREAT == wasi.OFLAGS_CREAT) {
-                                entry = fds[fd].create_entry_for_path(path);
-                            } else {
-                                return -1;
-                            }
-                        } else if (oflags & wasi.OFLAGS_EXCL == wasi.OFLAGS_EXCL) {
-                            return -1;
+                        let { ret, fd_obj } = fds[fd].path_open(dirflags, path, oflags, fs_rights_base, fs_rights_inheriting, fd_flags);
+                        if (ret != 0) {
+                            return ret;
                         }
-                        if (oflags & wasi.OFLAGS_DIRECTORY == wasi.OFLAGS_DIRECTORY && fds[fd].file_type != wasi.FILETYPE_DIRECTORY) {
-                            return -1;
-                        }
-                        if (oflags & wasi.OFLAGS_TRUNC == wasi.OFLAGS_TRUNC) {
-                            entry.truncate();
-                        }
-                        fds.push(entry.open());
+                        // FIXME use first free fd
+                        fds.push(fd_obj);
                         let opened_fd = fds.length - 1;
                         buffer.setUint32(opened_fd_ptr, opened_fd, true);
+                        return 0;
                     } else {
                         return -1;
                     }
                 },
-                path_readlink() { console.log("path_readlink"); },
-                path_remove_directory() { console.log("path_remove_directory"); },
-                path_rename() { console.log("path_rename"); },
-                path_unlink_file() { console.log("path_unlink_file"); },
-                sched_yield() { console.log("sched_yield"); },
-                fd_prestat_get(fd, buf_ptr) {
+                path_readlink(fd, path_ptr, path_len, buf_ptr, buf_len, nread_ptr) {
                     let buffer = new DataView(inst.exports.memory.buffer);
-                    console.log("fd_prestat_get(", fd, ", ", buf_ptr, ")");
-                    if (fds[fd] != undefined && fds[fd].prestat_name != undefined) {
-                        let prestat = wasi.Prestat.dir(fds[fd].prestat_name.length);
-                        prestat.write_bytes(buffer, buf_ptr);
-                        return 0;
+                    let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                    if (fds[fd] != undefined) {
+                        let path = new TextDecoder("utf-8").decode(buffer8.slice(path_ptr, path_ptr + path_len));
+                        console.log(path);
+                        let { ret, data } = fds[fd].path_readlink(path);
+                        if (data != null) {
+                            if (data.length > buf_len) {
+                                buffer.setUint32(nread_ptr, 0, true);
+                                return -1;
+                            }
+                            buffer8.set(data, buf_ptr);
+                            buffer.setUint32(nread_ptr, data.length, true);
+                        }
+                        return ret;
                     } else {
                         return -1;
                     }
                 },
-                fd_prestat_dir_name(fd, path_ptr, path_len) {
-                    console.log("fd_prestat_dir_name(", fd, ", ", path_ptr, ", ", path_len, ")");
-                    if (fds[fd] != undefined && fds[fd].prestat_name != undefined) {
-                        let buffer8 = new Uint8Array(inst.exports.memory.buffer);
-                        buffer8.set(fds[fd].prestat_name, path_ptr);
-                        return 0;
+                path_remove_directory(fd, path_ptr, path_len) {
+                    let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                    if (fds[fd] != undefined) {
+                        let path = new TextDecoder("utf-8").decode(buffer8.slice(path_ptr, path_ptr + path_len));
+                        return fds[fd].path_remove_directory(path);
                     } else {
                         return -1;
                     }
                 },
+                path_rename(fd, old_path_ptr, old_path_len, new_fd, new_path_ptr, new_path_len) {
+                    throw "FIXME what is the best abstraction for this?";
+                },
+                path_symlink(old_path_ptr, old_path_len, fd, new_path_ptr, new_path_len) {
+                    let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                    if (fds[fd] != undefined) {
+                        let old_path = new TextDecoder("utf-8").decode(buffer8.slice(old_path_ptr, old_path_ptr + old_path_len));
+                        let new_path = new TextDecoder("utf-8").decode(buffer8.slice(new_path_ptr, new_path_ptr + new_path_len));
+                        return fds[new_fd].path_symlink(old_path, new_path);
+                    } else {
+                        return -1;
+                    }
+                },
+                path_unlink_file(fd, path_ptr, path_len) {
+                    let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                    if (fds[fd] != undefined) {
+                        let path = new TextDecoder("utf-8").decode(buffer8.slice(path_ptr, path_ptr + path_len));
+                        return fds[fd].path_unlink_file(path);
+                    } else {
+                        return -1;
+                    }
+                },
+                poll_oneoff(in_, out, nsubscriptions) {
+                    throw "async io not supported";
+                },
+                proc_exit(exit_code) {
+                    throw "exit with exit code " + exit_code;
+                },
+                proc_raise(sig) {
+                    throw "raised signal " + sig;
+                },
+                sched_yield() {},
+                random_get(buf, buf_len) {
+                    let buffer8 = new Uint8Array(inst.exports.memory.buffer);
+                    for (let i = 0; i < buf_len; i++) {
+                        buffer8[buf + i] = (Math.random() * 256) | 0;
+                    }
+                },
+                sock_recv(fd, ri_data, ri_flags) {
+                    throw "sockets not supported";
+                },
+                sock_send(fd, si_data, si_flags) {
+                    throw "sockets not supported";
+                },
+                sock_shutdown(fd, how) {
+                    throw "sockets not supported";
+                }
             }
         });
         document.body.innerText = "Executing\n";
