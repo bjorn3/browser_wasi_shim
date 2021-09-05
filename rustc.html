@@ -293,8 +293,8 @@
                     //console.log("fd_read(", fd, ", ", iovs_ptr, ", ", iovs_len, ", ", nread_ptr, ")");
                     if (fds[fd] != undefined) {
                         buffer.setUint32(nread_ptr, 0, true);
-                        for (let i = 0; i < iovs_len; i++) {
-                            let iovec = wasi.Iovec.read_bytes(buffer, iovs_ptr + 8 * i);
+                        let iovecs = wasi.Iovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
+                        for (let iovec of iovecs) {
                             let [data, err] = fds[fd].read(iovec.buf_len);
                             if (err != 0) {
                                 return err;
@@ -355,8 +355,8 @@
                     //console.log("fd_write(", fd, ", ", iovs_ptr, ", ", iovs_len, ", ", nwritten_ptr, ")");
                     if (fds[fd] != undefined) {
                         buffer.setUint32(nwritten_ptr, 0, true);
-                        for (let i = 0; i < iovs_len; i++) {
-                            let iovec = wasi.Ciovec.read_bytes(buffer, iovs_ptr + 8 * i);
+                        let iovecs = wasi.Ciovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
+                        for (let iovec of iovecs) {
                             console.log(iovec.buf_len, iovec.buf_len, buffer8.slice(iovec.buf, iovec.buf + iovec.buf_len));
                             let err = fds[fd].write(buffer8.slice(iovec.buf, iovec.buf + iovec.buf_len));
                             if (err != 0) {

@@ -127,6 +127,14 @@ export class Iovec {
         iovec.buf_len = view.getUint32(ptr + 4, true);
         return iovec;
     }
+
+    static read_bytes_array(view, ptr, len) {
+        let iovecs = [];
+        for (let i = 0; i < len; i++) {
+            iovecs.push(Iovec.read_bytes(view, ptr + 8 * i));
+        }
+        return iovecs;
+    }
 }
 
 export class Ciovec {
@@ -138,6 +146,14 @@ export class Ciovec {
         iovec.buf = view.getUint32(ptr, true);
         iovec.buf_len = view.getUint32(ptr + 4, true);
         return iovec;
+    }
+
+    static read_bytes_array(view, ptr, len) {
+        let iovecs = [];
+        for (let i = 0; i < len; i++) {
+            iovecs.push(Ciovec.read_bytes(view, ptr + 8 * i));
+        }
+        return iovecs;
     }
 }
 
