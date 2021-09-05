@@ -242,23 +242,6 @@
         //let wasm = await WebAssembly.compileStreaming(fetch("/rust_out.wasm"));
         document.body.innerText = "Instantiating";
 
-        function fd_err() {
-            return -1;
-        }
-
-        function read_stdio() {
-            throw "unimplemented read_stdio";
-        }
-
-        function write_stdio(buffer) {
-            document.body.innerText += new TextDecoder("utf-8").decode(buffer);
-            return 0;
-        }
-
-        function new_directory(name, contents) {
-            return new Directory(name, contents);
-        }
-
         async function load_external_file(path) {
             return new File(await (await (await fetch(path)).blob()).arrayBuffer());
         }
