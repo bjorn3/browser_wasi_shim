@@ -129,6 +129,18 @@ export class Iovec {
     }
 }
 
+export class Ciovec {
+    buf = 0;
+    buf_len = 0;
+
+    static read_bytes(view, ptr) {
+        let iovec = new Ciovec();
+        iovec.buf = view.getUint32(ptr, true);
+        iovec.buf_len = view.getUint32(ptr + 4, true);
+        return iovec;
+    }
+}
+
 export const WHENCE_SET = 0;
 export const WHENCE_CUR = 1;
 export const WHENCE_END = 2;
@@ -269,3 +281,32 @@ export const SDFLAGS_RD = 1 << 0;
 export const SDFLAGS_WR = 1 << 1;
 
 export const PREOPENTYPE_DIR = 0;
+
+export class PrestatDir {
+    pr_name_len = 0;
+
+    constructor(name_len) {
+        this.pr_name_len = name_len;
+    }
+
+    write_bytes(view, ptr) {
+        view.setUint32(ptr, this.pr_name_len);
+    }
+}
+
+export class Prestat {
+    tag = 0;
+    inner = null;
+
+    static dir(name_len) {
+        let prestat = new Prestat();
+        prestat.tag = PREOPENTYPE_DIR;
+        prestat.inner = new PrestatDir(name_len);
+        return prestat;
+    }
+
+    write_bytes(view, ptr) {
+        view.setUint32(ptr, this.tag, true);
+        this.inner.write_bytes(view, ptr + 4);
+    }
+}

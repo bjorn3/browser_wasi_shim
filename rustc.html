@@ -356,14 +356,13 @@
                     if (fds[fd] != undefined) {
                         buffer.setUint32(nwritten_ptr, 0, true);
                         for (let i = 0; i < iovs_len; i++) {
-                            // FIXME use Ciovec
-                            let [ptr, len] = [buffer.getUint32(iovs_ptr + 8 * i, true), buffer.getUint32(iovs_ptr + 8 * i + 4, true)];
-                            console.log(ptr, len, buffer8.slice(ptr, ptr + len));
-                            let err = fds[fd].write(buffer8.slice(ptr, ptr + len));
+                            let iovec = wasi.Ciovec.read_bytes(buffer, iovs_ptr + 8 * i);
+                            console.log(iovec.buf_len, iovec.buf_len, buffer8.slice(iovec.buf, iovec.buf + iovec.buf_len));
+                            let err = fds[fd].write(buffer8.slice(iovec.buf, iovec.buf + iovec.buf_len));
                             if (err != 0) {
                                 return err;
                             }
-                            buffer.setUint32(nwritten_ptr, buffer.getUint32(nwritten_ptr, true) + len, true);
+                            buffer.setUint32(nwritten_ptr, buffer.getUint32(nwritten_ptr, true) + iovec.buf_len, true);
                         }
                         return 0;
                     } else {
@@ -439,8 +438,8 @@
                     let buffer = new DataView(inst.exports.memory.buffer);
                     console.log("fd_prestat_get(", fd, ", ", buf_ptr, ")");
                     if (fds[fd] != undefined && fds[fd].prestat_name != undefined) {
-                        buffer.setUint32(buf_ptr, wasi.PREOPENTYPE_DIR, true);
-                        buffer.setUint32(buf_ptr + 4, fds[fd].prestat_name.length);
+                        let prestat = wasi.Prestat.dir(fds[fd].prestat_name.length);
+                        prestat.write_bytes(buffer, buf_ptr);
                         return 0;
                     } else {
                         return -1;
