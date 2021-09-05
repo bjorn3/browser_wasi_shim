@@ -470,7 +470,7 @@
                 fd_prestat_dir_name(fd, path_ptr, path_len) {
                     // FIXME don't ignore path_len
                     console.log("fd_prestat_dir_name(", fd, ", ", path_ptr, ", ", path_len, ")");
-                    if (fds[fd] != undefined && fds[fd].prestat_name != undefined) {
+                    if (fds[fd] != undefined) {
                         let { ret, prestat_dir_name } = fds[fd].fd_prestat_dir_name();
                         if (prestat_dir_name != null) {
                             let buffer8 = new Uint8Array(inst.exports.memory.buffer);
@@ -508,7 +508,7 @@
                 fd_readdir(fd, buf, buf_len, cookie, bufused_ptr) {
                     let buffer = new DataView(inst.exports.memory.buffer);
                     let buffer8 = new Uint8Array(inst.exports.memory.buffer);
-                    if (fds[fd] != undefined && fds[fd].directory != undefined) {
+                    if (fds[fd] != undefined) {
                         let bufused = 0;
 
                         while (true) {
@@ -705,7 +705,7 @@
                 proc_raise(sig) {
                     throw "raised signal " + sig;
                 },
-                sched_yield() {},
+                sched_yield() { },
                 random_get(buf, buf_len) {
                     let buffer8 = new Uint8Array(inst.exports.memory.buffer);
                     for (let i = 0; i < buf_len; i++) {
