@@ -4,6 +4,8 @@
     import Fd from "./fd.js";
 
     class File {
+        data = null;
+
         constructor(data) {
             console.log(data);
             this.data = new Uint8Array(data);
@@ -27,10 +29,12 @@
     }
 
     class OpenFile extends Fd {
+        file = null;
+        file_pos = 0;
+
         constructor(file) {
             super();
             this.file = file;
-            this.file_pos = 0;
         }
 
         fd_read(view8, iovs) {
@@ -88,57 +92,9 @@
         stat() {
             return new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0);
         }
-    }
-
-    class OpenDirectory extends Fd {
-        constructor(dir) {
-            super();
-            this.dir = dir;
-        }
-
-        fd_readdir_single(cookie) {
-            console.log(cookie, Object.keys(this.dir.contents).slice(Number(cookie)));
-            if (cookie >= BigInt(Object.keys(this.dir.contents).length)) {
-                return { ret: 0, dirent: null };
-            }
-
-            let name = Object.keys(this.dir.contents)[Number(cookie)];
-            let entry = this.dir.contents[name];
-            let encoded_name = new TextEncoder("utf-8").encode(name);
-
-            return { ret: 0, dirent: new wasi.Dirent(cookie + 1n, name, entry.stat().filetype) };
-        }
-
-        path_filestat_get(flags, path) {
-            let entry = this.get_entry_for_path(path);
-            if (entry == null) {
-                return { ret: -1, filestat: null };
-            }
-            return { ret: 0, filestat: entry.stat() };
-        }
-
-        path_open(dirflags, path, oflags, fs_rights_base, fs_rights_inheriting, fd_flags) {
-            let entry = this.get_entry_for_path(path);
-            if (entry == null) {
-                if ((oflags & wasi.OFLAGS_CREAT) == wasi.OFLAGS_CREAT) {
-                    entry = this.create_entry_for_path(path);
-                } else {
-                    return { ret: -1, fd_obj: null };
-                }
-            } else if ((oflags & wasi.OFLAGS_EXCL) == wasi.OFLAGS_EXCL) {
-                return { ret: -1, fd_obj: null };
-            }
-            if ((oflags & wasi.OFLAGS_DIRECTORY) == wasi.OFLAGS_DIRECTORY && entry.stat().filetype != wasi.FILETYPE_DIRECTORY) {
-                return { ret: -1, fd_obj: null };
-            }
-            if ((oflags & wasi.OFLAGS_TRUNC) == wasi.OFLAGS_TRUNC) {
-                entry.truncate();
-            }
-            return { ret: 0, fd_obj: entry.open() };
-        }
 
         get_entry_for_path(path) {
-            let entry = this.dir;
+            let entry = this;
             for (let component of path.split("/")) {
                 if (component == "") break;
                 if (entry.contents[component] != undefined) {
@@ -152,7 +108,7 @@
         }
 
         create_entry_for_path(path) {
-            let entry = this.dir;
+            let entry = this;
             let components = path.split("/").filter((component) => component != "/");
             for (let i in components) {
                 let component = components[i];
@@ -172,7 +128,59 @@
         }
     }
 
+    class OpenDirectory extends Fd {
+        dir = null;
+
+        constructor(dir) {
+            super();
+            this.dir = dir;
+        }
+
+        fd_readdir_single(cookie) {
+            console.log(cookie, Object.keys(this.dir.contents).slice(Number(cookie)));
+            if (cookie >= BigInt(Object.keys(this.dir.contents).length)) {
+                return { ret: 0, dirent: null };
+            }
+
+            let name = Object.keys(this.dir.contents)[Number(cookie)];
+            let entry = this.dir.contents[name];
+            let encoded_name = new TextEncoder("utf-8").encode(name);
+
+            return { ret: 0, dirent: new wasi.Dirent(cookie + 1n, name, entry.stat().filetype) };
+        }
+
+        path_filestat_get(flags, path) {
+            let entry = this.dir.get_entry_for_path(path);
+            if (entry == null) {
+                return { ret: -1, filestat: null };
+            }
+            return { ret: 0, filestat: entry.stat() };
+        }
+
+        path_open(dirflags, path, oflags, fs_rights_base, fs_rights_inheriting, fd_flags) {
+            let entry = this.dir.get_entry_for_path(path);
+            if (entry == null) {
+                if ((oflags & wasi.OFLAGS_CREAT) == wasi.OFLAGS_CREAT) {
+                    entry = this.dir.create_entry_for_path(path);
+                } else {
+                    return { ret: -1, fd_obj: null };
+                }
+            } else if ((oflags & wasi.OFLAGS_EXCL) == wasi.OFLAGS_EXCL) {
+                return { ret: -1, fd_obj: null };
+            }
+            if ((oflags & wasi.OFLAGS_DIRECTORY) == wasi.OFLAGS_DIRECTORY && entry.stat().filetype != wasi.FILETYPE_DIRECTORY) {
+                return { ret: -1, fd_obj: null };
+            }
+            if ((oflags & wasi.OFLAGS_TRUNC) == wasi.OFLAGS_TRUNC) {
+                entry.truncate();
+            }
+            return { ret: 0, fd_obj: entry.open() };
+        }
+    }
+
     class PreopenDirectory extends OpenDirectory {
+        prestat_name = null;
+
         constructor(name, contents) {
             super(new Directory(contents));
             this.prestat_name = new TextEncoder("utf-8").encode(name);
