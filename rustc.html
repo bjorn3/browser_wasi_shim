@@ -1,8 +1,9 @@
 <meta charset="utf-8">
 <script type="module">
     import * as wasi from "./wasi_defs.js";
-    import { Fd, OpenFile, OpenDirectory, PreopenDirectory, Stdio } from "./fd.js";
+    import { Fd, Stdio } from "./fd.js";
     import { File, Directory } from "./fs_core.js";
+    import { OpenFile, OpenDirectory, PreopenDirectory } from "./fs_fd.js";
     import WASI from "./wasi.js";
 
     (async function () {
