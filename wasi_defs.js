@@ -306,7 +306,7 @@ export class PrestatDir {
     }
 
     write_bytes(view, ptr) {
-        view.setUint32(ptr, this.pr_name_len);
+        view.setUint32(ptr, this.pr_name_len, true);
     }
 }
 
