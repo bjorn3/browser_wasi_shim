@@ -210,7 +210,7 @@ export default class WASI {
                 let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
                 if (self.fds[fd] != undefined) {
                     let iovecs = wasi.Ciovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
-                    let { ret, nwritten } = self.fds[fd].fd_pwrite(buffer8, iovecs, offsets);
+                    let { ret, nwritten } = self.fds[fd].fd_pwrite(buffer8, iovecs, offset);
                     buffer.setUint32(nwritten_ptr, nwritten, true);
                     return ret;
                 } else {
@@ -264,7 +264,7 @@ export default class WASI {
             },
             fd_renumber(fd, to) {
                 if (self.fds[fd] != undefined && self.fds[to] != undefined) {
-                    let ret = self.fds[to].fd_close()
+                    let ret = self.fds[to].fd_close();
                     if (ret != 0) {
                         return ret;
                     }
@@ -276,9 +276,11 @@ export default class WASI {
                 }
             },
             fd_seek(fd, offset, whence, offset_out_ptr) {
+                let buffer = new DataView(self.inst.exports.memory.buffer);
                 if (self.fds[fd] != undefined) {
-                    let { ret, offset } = self.fds[fd].fd_seek(offset, whence);
+                    let { ret, offset_out } = self.fds[fd].fd_seek(offset, whence);
                     buffer.setUint32(offset_out_ptr, offset_out, true);
+                    return ret;
                 } else {
                     return wasi.ERRNO_BADF;
                 }
@@ -291,9 +293,11 @@ export default class WASI {
                 }
             },
             fd_tell(fd, offset_ptr) {
+                let buffer = new DataView(self.inst.exports.memory.buffer);
                 if (self.fds[fd] != undefined) {
                     let { ret, offset } = self.fds[fd].fd_tell();
                     buffer.setUint32(offset_ptr, offset, true);
+                    return ret;
                 } else {
                     return wasi.ERRNO_BADF;
                 }
