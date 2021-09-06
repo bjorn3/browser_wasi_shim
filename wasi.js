@@ -9,7 +9,6 @@ export default class WASI {
     start(instance) {
         this.inst = instance;
         instance.exports._start();
-        instance.exports.main();
     }
 
     constructor(args, env, fds) {
