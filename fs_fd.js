@@ -11,6 +11,10 @@ export class OpenFile extends Fd {
         this.file = file;
     }
 
+    fd_fdstat_get() {
+        return { ret: 0, filestat: new wasi.Fdstat(wasi.FILETYPE_REGULAR_FILE, 0) };
+    }
+
     fd_read(view8, iovs) {
         let nread = 0;
         for (let iovec of iovs) {
@@ -58,6 +62,10 @@ export class OpenDirectory extends Fd {
     constructor(dir) {
         super();
         this.dir = dir;
+    }
+
+    fd_fdstat_get() {
+        return { ret: 0, filestat: new wasi.Fdstat(wasi.FILETYPE_DIRECTORY, 0) };
     }
 
     fd_readdir_single(cookie) {

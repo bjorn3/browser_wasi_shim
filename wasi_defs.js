@@ -211,6 +211,25 @@ export const FDFLAGS_NONBLOCK = 1 << 2;
 export const FDFLAGS_RSYNC = 1 << 3;
 export const FDFLAGS_SYNC = 1 << 4;
 
+export class Fdstat {
+    fs_filetype = 0;
+    fs_flags = 0;
+    fs_rights_base = 0n;
+    fs_rights_inherited = 0n;
+
+    constructor(filetype, flags) {
+        this.fs_filetype = filetype;
+        this.fs_flags = flags;
+    }
+
+    write_bytes(view, ptr) {
+        view.setUint8(ptr, this.fs_filetype, true);
+        view.setUint16(ptr + 2, this.fs_flags, true);
+        view.setBigUint64(ptr + 8, this.fs_rights_base, true);
+        view.setBigUint64(ptr + 16, this.fs_rights_inherited, true);
+    }
+}
+
 export const FSTFLAGS_ATIM = 1 << 0;
 export const FSTFLAGS_ATIM_NOW = 1 << 1;
 export const FSTFLAGS_MTIM = 1 << 2;
