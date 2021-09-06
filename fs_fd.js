@@ -30,6 +30,30 @@ export class OpenFile extends Fd {
         return { ret: 0, nread };
     }
 
+    fd_seek(offset, whence) {
+        let calculated_offset;
+        switch (whence) {
+            case wasi.WHENCE_SET:
+                calculated_offset = offset;
+                break;
+            case wasi.WHENCE_CUR:
+                calculated_offset = this.file_pos + offset;
+                break;
+            case wasi.WHENCE_END:
+                calculated_offset = this.file.data.length + offset;
+                break;
+            default:
+                return { ret: wasi.ERRNO_INVAL, offset: 0 };
+        }
+
+        if (calculated_offset < 0) {
+            return { ret: wasi.ERRNO_INVAL, offset: 0 };
+        }
+
+        this.file_pos = calculated_offset;
+        return { ret: 0, offset: calculated_offset };
+    }
+
     fd_write(view8, iovs) {
         let nwritten = 0;
         for (let iovec of iovs) {
