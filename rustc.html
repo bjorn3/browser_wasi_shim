@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="node_modules/xterm/css/xterm.css" />
 <script src="node_modules/xterm/lib/xterm.js"></script>
+<script src="node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
 <style>
     body {
         margin: 0;
@@ -22,6 +23,10 @@
         convertEol: true,
     });
     term.open(document.getElementById('terminal'));
+
+    var fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    fitAddon.fit();
 
     class XtermStdio extends Fd {
         /*:: term: Terminal*/
