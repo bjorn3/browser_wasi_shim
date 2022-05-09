@@ -90,17 +90,3 @@ export class Fd {
         return -1;
     }
 }
-
-
-export class Stdio extends Fd {
-    fd_write(view8, iovs) {
-        let nwritten = 0;
-        for (let iovec of iovs) {
-            console.log(iovec.buf_len, iovec.buf_len, view8.slice(iovec.buf, iovec.buf + iovec.buf_len));
-            let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
-            document.body.innerText += new TextDecoder("utf-8").decode(buffer);
-            nwritten += iovec.buf_len;
-        }
-        return { ret: 0, nwritten };
-    }
-}
