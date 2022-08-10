@@ -81,7 +81,12 @@ export default class WASI {
             clock_time_get(id, precision, time) {
                 let buffer = new DataView(self.inst.exports.memory.buffer);
                 console.log("clock_time_get(", id, ", ", precision, ", ", time, ")");
-                buffer.setBigUint64(time, 0n, true);
+                if (id === wasi.CLOCKID_REALTIME) {
+                    buffer.setBigUint64(time, BigInt(new Date().getTime()) * 1000000n, true);
+                } else {
+                    // TODO
+                    buffer.setBigUint64(time, 0n, true);
+                }
                 return 0;
             },
 
