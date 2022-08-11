@@ -11,7 +11,7 @@ export function strace(imports, no_trace) {
             }
             return function(...args) {
                 console.log(prop, "(", ...args, ")");
-                res.call(...args);
+                return Reflect.apply(res, receiver, args);
             }
         }
     });
