@@ -14,11 +14,11 @@
 <body>
 <div id="terminal"></div>
 <script type="module">
-    import { Fd } from "../fd.js";
-    import { File, Directory } from "../fs_core.js";
-    import { PreopenDirectory } from "../fs_fd.js";
-    import WASI from "../wasi.js";
-    import { strace } from "../strace.js"
+    import { Fd } from "../src/fd.js";
+    import { File, Directory } from "../src/fs_core.js";
+    import { PreopenDirectory } from "../src/fs_fd.js";
+    import WASI from "../src/wasi.js";
+    import { strace } from "../src/strace.js"
 
     var term = new Terminal({
         convertEol: true,
