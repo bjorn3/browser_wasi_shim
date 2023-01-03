@@ -1,6 +1,6 @@
 {
   "name": "@bjorn3/browser_wasi_shim",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT OR Apache-2.0",
   "description": "A pure javascript shim for WASI",
   "scripts": {
@@ -14,6 +14,7 @@
   "bugs": {
     "url": "https://github.com/bjorn3/browser_wasi_shim/issues"
   },
+  "main": "src/index.js",
   "homepage": "https://github.com/bjorn3/browser_wasi_shim#readme",
   "devDependencies": {
     "flow-bin": "^0.159.0"
