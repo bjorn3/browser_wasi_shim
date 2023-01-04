@@ -4,9 +4,12 @@ Implementation status: A subset of wasi_snapshot_preview1 is implemented. The re
 
 ## Usage
 
+```
+npm install @bjorn3/browser_wasi_shim --save
+```
+
 ```javascript
-import WASI from "./browser_wasi_shim/src/wasi.js";
-import { File } from "./browser_wasi_shim/src/fs_core.js";
+import { WASI, File, PreopenDirectory } from "@bjorn3/browser_wasi_shim";
 
 let args = ["bin", "arg1", "arg2"];
 let env = ["FOO=bar"];
