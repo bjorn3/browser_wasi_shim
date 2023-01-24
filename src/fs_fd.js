@@ -6,7 +6,7 @@ import { Fd } from "./fd.js";
 
 export class OpenFile extends Fd {
     /*:: file: File*/;
-    file_pos/*: number*/ = 0;
+    file_pos/*: number*/ = 0n;
 
     constructor(file/*: File*/) {
         super();
