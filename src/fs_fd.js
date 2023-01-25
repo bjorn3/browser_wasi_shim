@@ -6,7 +6,7 @@ import { Fd } from "./fd.js";
 
 export class OpenFile extends Fd {
     /*:: file: File*/;
-    file_pos/*: number*/ = 0;
+    file_pos/*: BigInt*/ = 0n;
 
     constructor(file/*: File*/) {
         super();
@@ -21,9 +21,9 @@ export class OpenFile extends Fd {
         let nread = 0;
         for (let iovec of iovs) {
             if (this.file_pos < this.file.data.byteLength) {
-                let slice = this.file.data.slice(this.file_pos, this.file_pos + iovec.buf_len);
+                let slice = this.file.data.slice(Number(this.file_pos), Number(this.file_pos + BigInt(iovec.buf_len)));
                 view8.set(slice, iovec.buf);
-                this.file_pos += slice.length;
+                this.file_pos += BigInt(slice.length);
                 nread += slice.length;
             } else {
                 break;
@@ -32,7 +32,7 @@ export class OpenFile extends Fd {
         return { ret: 0, nread };
     }
 
-    fd_seek(offset/*: number*/, whence/*: number*/)/*: {ret: number, offset: number }*/ {
+    fd_seek(offset/*: BigInt*/, whence/*: number*/)/*: {ret: number, offset: BigInt }*/ {
         let calculated_offset;
         switch (whence) {
             case wasi.WHENCE_SET:
@@ -60,18 +60,18 @@ export class OpenFile extends Fd {
         let nwritten = 0;
         for (let iovec of iovs) {
             let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
-            if (this.file_pos + buffer.byteLength > this.file.size) {
+            if (this.file_pos + BigInt(buffer.byteLength) > this.file.size) {
                 let old = this.file.data;
-                this.file.data = new Uint8Array(this.file_pos + buffer.byteLength);
+                this.file.data = new Uint8Array(Number(this.file_pos + BigInt(buffer.byteLength)));
                 this.file.data.set(old);
             }
             this.file.data.set(
                 buffer.slice(
                     0,
-                    this.file.size - this.file_pos,
-                ), this.file_pos
+                    this.file.size - Number(this.file_pos),
+                ), Number(this.file_pos)
             );
-            this.file_pos += buffer.byteLength;
+            this.file_pos += BigInt(buffer.byteLength);
             nwritten += iovec.buf_len;
         }
         return { ret: 0, nwritten };
