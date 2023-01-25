@@ -6,7 +6,7 @@ import { Fd } from "./fd.js";
 
 export class OpenFile extends Fd {
     /*:: file: File*/;
-    file_pos/*: number*/ = 0n;
+    file_pos/*: BigInt*/ = 0n;
 
     constructor(file/*: File*/) {
         super();
@@ -32,7 +32,7 @@ export class OpenFile extends Fd {
         return { ret: 0, nread };
     }
 
-    fd_seek(offset/*: number*/, whence/*: number*/)/*: {ret: number, offset: number }*/ {
+    fd_seek(offset/*: BigInt*/, whence/*: number*/)/*: {ret: number, offset: BigInt }*/ {
         let calculated_offset;
         switch (whence) {
             case wasi.WHENCE_SET:
