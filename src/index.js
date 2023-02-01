@@ -3,10 +3,9 @@ import { File } from "./fs_core.js"
 import { PreopenDirectory } from "./fs_fd.js"
 import { strace } from "./strace.js"
 
-module.exports = {
+export {
     WASI,
     File,
     PreopenDirectory,
     strace,
-}
-
+};
