@@ -6,7 +6,7 @@ export class File {
     /*:: data: Uint8Array*/;
 
     constructor(data/*: ArrayBuffer | Uint8Array*/) {
-        console.log(data);
+        //console.log(data);
         this.data = new Uint8Array(data);
     }
 
@@ -41,7 +41,7 @@ export class Directory {
             if (entry.contents[component] != undefined) {
                 entry = entry.contents[component];
             } else {
-                console.log(component);
+                //console.log(component);
                 return null;
             }
         }
@@ -57,7 +57,7 @@ export class Directory {
             if (entry.contents[component] != undefined) {
                 entry = entry.contents[component];
             } else {
-                console.log("create", component);
+                //console.log("create", component);
                 if (i == components.length - 1) {
                     entry.contents[component] = new File(new ArrayBuffer(0));
                 } else {

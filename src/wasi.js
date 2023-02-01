@@ -29,7 +29,7 @@ export default class WASI {
                     buf_size += arg.length + 1;
                 }
                 buffer.setUint32(argv_buf_size, buf_size, true);
-                console.log(buffer.getUint32(argc, true), buffer.getUint32(argv_buf_size, true));
+                //console.log(buffer.getUint32(argc, true), buffer.getUint32(argv_buf_size, true));
                 return 0;
             },
             args_get(argv/*: number*/, argv_buf/*: number*/)/*: number*/ {
@@ -44,7 +44,7 @@ export default class WASI {
                     buffer.setUint8(argv_buf + arg.length, 0);
                     argv_buf += arg.length + 1;
                 }
-                console.log(new TextDecoder("utf-8").decode(buffer8.slice(orig_argv_buf, argv_buf)));
+                //console.log(new TextDecoder("utf-8").decode(buffer8.slice(orig_argv_buf, argv_buf)));
                 return 0;
             },
 
@@ -56,7 +56,7 @@ export default class WASI {
                     buf_size += environ.length + 1;
                 }
                 buffer.setUint32(environ_size, buf_size, true);
-                console.log(buffer.getUint32(environ_count, true), buffer.getUint32(environ_size, true));
+                //console.log(buffer.getUint32(environ_count, true), buffer.getUint32(environ_size, true));
                 return 0;
             },
             environ_get(environ/*: number*/, environ_buf/*: number*/)/*: number*/ {
@@ -71,7 +71,7 @@ export default class WASI {
                     buffer.setUint8(environ_buf + e.length, 0);
                     environ_buf += e.length + 1;
                 }
-                console.log(new TextDecoder("utf-8").decode(buffer8.slice(orig_environ_buf, environ_buf)));
+                //console.log(new TextDecoder("utf-8").decode(buffer8.slice(orig_environ_buf, environ_buf)));
                 return 0;
             },
 
@@ -360,7 +360,7 @@ export default class WASI {
                 let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
                 if (self.fds[fd] != undefined) {
                     let path = new TextDecoder("utf-8").decode(buffer8.slice(path_ptr, path_ptr + path_len));
-                    console.log(path);
+                    //console.log(path);
                     let { ret, fd_obj } = self.fds[fd].path_open(dirflags, path, oflags, fs_rights_base, fs_rights_inheriting, fd_flags);
                     if (ret != 0) {
                         return ret;
@@ -379,7 +379,7 @@ export default class WASI {
                 let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
                 if (self.fds[fd] != undefined) {
                     let path = new TextDecoder("utf-8").decode(buffer8.slice(path_ptr, path_ptr + path_len));
-                    console.log(path);
+                    //console.log(path);
                     let { ret, data } = self.fds[fd].path_readlink(path);
                     if (data != null) {
                         if (data.length > buf_len) {
