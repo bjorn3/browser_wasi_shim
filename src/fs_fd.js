@@ -95,7 +95,7 @@ export class OpenDirectory extends Fd {
     }
 
     fd_readdir_single(cookie/*: BigInt*/)/*: { ret: number, dirent: wasi.Dirent | null }*/ {
-        console.log(cookie, Object.keys(this.dir.contents).slice(Number(cookie)));
+        //console.log(cookie, Object.keys(this.dir.contents).slice(Number(cookie)));
         if (cookie >= BigInt(Object.keys(this.dir.contents).length)) {
             return { ret: 0, dirent: null };
         }
