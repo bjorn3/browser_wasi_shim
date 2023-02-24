@@ -5,7 +5,8 @@
   "description": "A pure javascript shim for WASI",
   "type": "module",
   "scripts": {
-    "flow": "flow"
+    "build": "npx tsc",
+    "check": "npx tsc --noEmit"
   },
   "repository": {
     "type": "git",
@@ -17,11 +18,12 @@
   },
   "exports": {
     ".": {
-      "import": "./src/index.js"
+      "import": "./dist/index.js"
     }
   },
+  "typings": "./typings/index.d.ts",
   "homepage": "https://github.com/bjorn3/browser_wasi_shim#readme",
   "devDependencies": {
-    "flow-bin": "^0.159.0"
+    "typescript": "^4.9.5"
   }
 }

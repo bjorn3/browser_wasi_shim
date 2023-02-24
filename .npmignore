@@ -3,3 +3,5 @@ node_modules
 *.wasm.gz
 /examples
 .github/
+src/
+.flowconfig
