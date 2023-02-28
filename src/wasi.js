@@ -10,9 +10,16 @@ export default class WASI {
     inst/*: { +exports: { memory: WebAssembly$Memory } }*/;
     wasiImport/*: { [string]: (...args: Array<any>) => mixed }*/;
 
+    /// Start a WASI command
     start(instance/*: { exports: { memory: WebAssembly$Memory, _start: () => mixed } }*/) {
         this.inst = instance;
         instance.exports._start();
+    }
+
+    /// Initialize a WASI reactor
+    initialize(instance/*: { exports: { memory: WebAssembly$Memory, _initialize: () => mixed } }*/) {
+        this.inst = instance;
+        instance.exports._initialize();
     }
 
     constructor(args/*: Array<string>*/, env/*: Array<string>*/, fds/*: Array<Fd>*/) {
