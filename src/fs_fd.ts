@@ -44,11 +44,11 @@ export class OpenFile extends Fd {
     return { ret: 0, nread };
   }
 
-  // @ts-ignore
-  fd_seek(offset: BigInt, whence: number): { ret: number; offset: BigInt } {
-    let calculated_offset;
+  fd_seek(offset: number | BigInt, whence: number): { ret: number; offset: number } {
+    let calculated_offset: number;
     switch (whence) {
       case wasi.WHENCE_SET:
+        // @ts-ignore
         calculated_offset = offset;
         break;
       case wasi.WHENCE_CUR:
@@ -69,7 +69,7 @@ export class OpenFile extends Fd {
       return { ret: wasi.ERRNO_INVAL, offset: 0 };
     }
 
-    this.file_pos = calculated_offset;
+    this.file_pos = BigInt(calculated_offset);
     return { ret: 0, offset: calculated_offset };
   }
 
