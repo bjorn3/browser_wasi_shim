@@ -3,7 +3,7 @@ import * as wasi from "./wasi_defs.js";
 export class File {
   data: Uint8Array;
 
-  constructor(data: ArrayBuffer | Uint8Array) {
+  constructor(data: ArrayBuffer | Uint8Array | Array<number>) {
     //console.log(data);
     this.data = new Uint8Array(data);
   }
