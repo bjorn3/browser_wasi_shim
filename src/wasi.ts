@@ -1,5 +1,3 @@
-// @flow
-
 import * as wasi from "./wasi_defs.js";
 import { Fd } from "./fd.js";
 

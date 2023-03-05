@@ -1,8 +1,5 @@
-// @flow
 
-/*::declare function strace<T>(imports: T, no_trace: Array<String>): T*/
-
-export function strace(imports, no_trace) {
+export function strace<T extends object>(imports: T, no_trace: Array<string|symbol>) {
   return new Proxy(imports, {
     get(target, prop, receiver) {
       let res = Reflect.get(target, prop, receiver);
@@ -11,7 +8,7 @@ export function strace(imports, no_trace) {
       }
       return function (...args) {
         console.log(prop, "(", ...args, ")");
-        return Reflect.apply(res, receiver, args);
+        return Reflect.apply(res as Function, receiver, args);
       };
     },
   });
