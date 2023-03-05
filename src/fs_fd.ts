@@ -100,9 +100,8 @@ export class OpenFile extends Fd {
     return { ret: 0, nwritten };
   }
 
-  // @ts-ignore
-  fd_filestat_get(): { ret: number; stat: wasi.Filestat } {
-    return { ret: 0, stat: this.file.stat() };
+  fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
+    return { ret: 0, filestat: this.file.stat() };
   }
 }
 
