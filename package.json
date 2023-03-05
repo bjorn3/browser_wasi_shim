@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "swc src -d dist && tsc --emitDeclarationOnly",
+    "prepare": "swc src -d dist && tsc --emitDeclarationOnly",
     "check": "tsc --noEmit"
   },
   "repository": {
