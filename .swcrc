@@ -1,0 +1,18 @@
+{
+    "$schema": "https://json.schemastore.org/swcrc",
+    "jsc": {
+        "parser": {
+            "syntax": "typescript",
+            "tsx": false,
+            "dynamicImport": false,
+            "decorators": false,
+            "dts": false
+        },
+        "transform": {},
+        "target": "es2020",
+        "loose": false,
+        "externalHelpers": false,
+        "keepClassNames": true
+    },
+    "minify": true
+}
