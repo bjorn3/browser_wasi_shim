@@ -5,7 +5,7 @@ type mixed = any;
 
 declare var TextEncoder: {
   prototype: TextEncoder;
-  new (encoding?: string): TextEncoder;
+  new(encoding?: string): TextEncoder;
 };
 
 export default class WASI {
@@ -28,7 +28,7 @@ export default class WASI {
   initialize(instance: { exports: { memory: WebAssembly.Memory, _initialize: () => mixed } }) {
     this.inst = instance;
     instance.exports._initialize();
-}
+  }
 
   constructor(args: Array<string>, env: Array<string>, fds: Array<Fd>) {
     this.args = args;
@@ -101,6 +101,16 @@ export default class WASI {
             BigInt(new Date().getTime()) * 1000000n,
             true
           );
+        } else if (id == wasi.CLOCKID_MONOTONIC) {
+          let monotonic_time: bigint;
+          try {
+            monotonic_time = BigInt(Math.round(performance.now() * 1000000));
+          } catch (e) {
+            // performance.now() is only available in browsers.
+            // TODO use the perf_hooks builtin module for NodeJS
+            monotonic_time = 0n;
+          }
+          buffer.setBigUint64(time, monotonic_time, true);
         } else {
           // TODO
           buffer.setBigUint64(time, 0n, true);
@@ -622,7 +632,7 @@ export default class WASI {
       proc_raise(sig: number) {
         throw "raised signal " + sig;
       },
-      sched_yield() {},
+      sched_yield() { },
       random_get(buf: number, buf_len: number) {
         let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         for (let i = 0; i < buf_len; i++) {
