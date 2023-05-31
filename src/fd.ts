@@ -60,7 +60,7 @@ export class Fd {
     return { ret: -1, dirent: null };
   }
   fd_seek(offset: number | BigInt, whence): { ret: number; offset: BigInt } {
-    return { ret: -1, offset: 0 };
+    return { ret: -1, offset: 0n };
   }
   fd_sync(): number {
     return -1;

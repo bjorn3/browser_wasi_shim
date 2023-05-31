@@ -61,16 +61,16 @@ export class OpenFile extends Fd {
         break;
       default:
         // @ts-ignore
-        return { ret: wasi.ERRNO_INVAL, offset: 0 };
+        return { ret: wasi.ERRNO_INVAL, offset: 0n };
     }
 
     if (calculated_offset < 0) {
       // @ts-ignore
-      return { ret: wasi.ERRNO_INVAL, offset: 0 };
+      return { ret: wasi.ERRNO_INVAL, offset: 0n };
     }
 
     this.file_pos = BigInt(calculated_offset);
-    return { ret: 0, offset: calculated_offset };
+    return { ret: 0, offset: this.file_pos };
   }
 
   fd_write(
