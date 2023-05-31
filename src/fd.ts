@@ -59,7 +59,7 @@ export class Fd {
   fd_readdir_single(cookie: BigInt) {
     return { ret: -1, dirent: null };
   }
-  fd_seek(offset: number | BigInt, whence) {
+  fd_seek(offset: number | BigInt, whence): { ret: number; offset: number | BigInt } {
     return { ret: -1, offset: 0 };
   }
   fd_sync(): number {
