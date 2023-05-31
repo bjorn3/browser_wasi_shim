@@ -373,11 +373,7 @@ export default class WASI {
             offset,
             whence
           );
-          if (typeof offset === 'bigint') {
-            buffer.setBigInt64(offset_out_ptr, offset, true);
-          } else {
-            buffer.setInt32(offset_out_ptr, offset, true);
-          }
+          buffer.setBigInt64(offset_out_ptr, offset, true);
           return ret;
         } else {
           return wasi.ERRNO_BADF;
