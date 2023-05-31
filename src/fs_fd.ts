@@ -9,7 +9,7 @@ declare var TextEncoder: {
 
 export class OpenFile extends Fd {
   file: File;
-  file_pos: BigInt = 0n;
+  file_pos: bigint = 0n;
 
   constructor(file: File) {
     super();
@@ -44,7 +44,7 @@ export class OpenFile extends Fd {
     return { ret: 0, nread };
   }
 
-  fd_seek(offset: number | BigInt, whence: number): { ret: number; offset: BigInt } {
+  fd_seek(offset: number | bigint, whence: number): { ret: number; offset: bigint } {
     let calculated_offset: number;
     switch (whence) {
       case wasi.WHENCE_SET:
@@ -117,7 +117,7 @@ export class OpenDirectory extends Fd {
     return { ret: 0, fdstat: new wasi.Fdstat(wasi.FILETYPE_DIRECTORY, 0) };
   }
 
-  fd_readdir_single(cookie: BigInt): {
+  fd_readdir_single(cookie: bigint): {
     ret: number;
     dirent: wasi.Dirent | null;
   } {
@@ -153,8 +153,8 @@ export class OpenDirectory extends Fd {
     dirflags: number,
     path: string,
     oflags: number,
-    fs_rights_base: BigInt,
-    fs_rights_inheriting: BigInt,
+    fs_rights_base: bigint,
+    fs_rights_inheriting: bigint,
     fd_flags: number
   ): { ret: number; fd_obj: Fd | null } {
     let entry = this.dir.get_entry_for_path(path);
