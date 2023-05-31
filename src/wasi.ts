@@ -93,7 +93,7 @@ export default class WASI {
       clock_res_get(id: number, res_ptr: number): number {
         throw "unimplemented";
       },
-      clock_time_get(id: number, precision: BigInt, time: number): number {
+      clock_time_get(id: number, precision: bigint, time: number): number {
         let buffer = new DataView(self.inst.exports.memory.buffer);
         if (id === wasi.CLOCKID_REALTIME) {
           buffer.setBigUint64(
@@ -120,8 +120,8 @@ export default class WASI {
 
       fd_advise(
         fd: number,
-        offset: BigInt,
-        len: BigInt,
+        offset: bigint,
+        len: bigint,
         advice: number
       ): number {
         if (self.fds[fd] != undefined) {
@@ -130,7 +130,7 @@ export default class WASI {
           return wasi.ERRNO_BADF;
         }
       },
-      fd_allocate(fd: number, offset: BigInt, len: BigInt): number {
+      fd_allocate(fd: number, offset: bigint, len: bigint): number {
         if (self.fds[fd] != undefined) {
           return self.fds[fd].fd_allocate(offset, len);
         } else {
@@ -177,8 +177,8 @@ export default class WASI {
       },
       fd_fdstat_set_rights(
         fd: number,
-        fs_rights_base: BigInt,
-        fs_rights_inheriting: BigInt
+        fs_rights_base: bigint,
+        fs_rights_inheriting: bigint
       ): number {
         if (self.fds[fd] != undefined) {
           return self.fds[fd].fd_fdstat_set_rights(
@@ -203,7 +203,7 @@ export default class WASI {
           return wasi.ERRNO_BADF;
         }
       },
-      fd_filestat_set_size(fd: number, size: BigInt): number {
+      fd_filestat_set_size(fd: number, size: bigint): number {
         if (self.fds[fd] != undefined) {
           return self.fds[fd].fd_filestat_set_size(size);
         } else {
@@ -212,8 +212,8 @@ export default class WASI {
       },
       fd_filestat_set_times(
         fd: number,
-        atim: BigInt,
-        mtim: BigInt,
+        atim: bigint,
+        mtim: bigint,
         fst_flags: number
       ): number {
         if (self.fds[fd] != undefined) {
@@ -226,7 +226,7 @@ export default class WASI {
         fd: number,
         iovs_ptr: number,
         iovs_len: number,
-        offset: BigInt,
+        offset: bigint,
         nread_ptr: number
       ): number {
         let buffer = new DataView(self.inst.exports.memory.buffer);
@@ -313,7 +313,7 @@ export default class WASI {
         fd: number,
         buf: number,
         buf_len: number,
-        cookie: BigInt,
+        cookie: bigint,
         bufused_ptr: number
       ): number {
         let buffer = new DataView(self.inst.exports.memory.buffer);
@@ -373,7 +373,7 @@ export default class WASI {
             offset,
             whence
           );
-          buffer.setUint32(offset_out_ptr, offset, true);
+          buffer.setBigInt64(offset_out_ptr, offset_out, true);
           return ret;
         } else {
           return wasi.ERRNO_BADF;
@@ -390,7 +390,7 @@ export default class WASI {
         let buffer = new DataView(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
           let { ret, offset } = self.fds[fd].fd_tell();
-          buffer.setUint32(offset_ptr, offset, true);
+          buffer.setBigUint64(offset_ptr, offset, true);
           return ret;
         } else {
           return wasi.ERRNO_BADF;

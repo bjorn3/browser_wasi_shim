@@ -184,13 +184,13 @@ declare var TextEncoder: {
 };
 
 export class Dirent {
-  d_next: BigInt;
-  d_ino: BigInt = 1n;
+  d_next: bigint;
+  d_ino: bigint = 1n;
   d_namlen: number;
   d_type: number;
   dir_name: Uint8Array;
 
-  constructor(next_cookie: BigInt, name: string, type: number) {
+  constructor(next_cookie: bigint, name: string, type: number) {
     let encoded_name = new TextEncoder("utf-8").encode(name);
 
     this.d_next = next_cookie;
@@ -230,8 +230,8 @@ export const FDFLAGS_SYNC = 1 << 4;
 export class Fdstat {
   fs_filetype: number;
   fs_flags: number;
-  fs_rights_base: BigInt = 0n;
-  fs_rights_inherited: BigInt = 0n;
+  fs_rights_base: bigint = 0n;
+  fs_rights_inherited: bigint = 0n;
 
   constructor(filetype: number, flags: number) {
     this.fs_filetype = filetype;
@@ -259,16 +259,16 @@ export const OFLAGS_EXCL = 1 << 2;
 export const OFLAGS_TRUNC = 1 << 3;
 
 export class Filestat {
-  dev: BigInt = 0n;
-  ino: BigInt = 0n;
+  dev: bigint = 0n;
+  ino: bigint = 0n;
   filetype: number;
-  nlink: BigInt = 0n;
-  size: BigInt;
-  atim: BigInt = 0n;
-  mtim: BigInt = 0n;
-  ctim: BigInt = 0n;
+  nlink: bigint = 0n;
+  size: bigint;
+  atim: bigint = 0n;
+  mtim: bigint = 0n;
+  ctim: bigint = 0n;
 
-  constructor(filetype: number, size: number | BigInt) {
+  constructor(filetype: number, size: number | bigint) {
     this.filetype = filetype;
     // @ts-ignore
     this.size = BigInt(size);

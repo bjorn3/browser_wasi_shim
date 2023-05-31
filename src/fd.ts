@@ -2,13 +2,13 @@ import * as wasi from "./wasi_defs.js";
 
 export class Fd {
   fd_advise(
-    offset: number | BigInt,
-    len: BigInt,
-    advice: number | BigInt
+    offset: number | bigint,
+    len: bigint,
+    advice: number | bigint
   ): number {
     return -1;
   }
-  fd_allocate(offset: number | BigInt, len: BigInt): number {
+  fd_allocate(offset: number | bigint, len: bigint): number {
     return -1;
   }
   fd_close(): number {
@@ -24,21 +24,21 @@ export class Fd {
     return -1;
   }
   fd_fdstat_set_rights(
-    fs_rights_base: BigInt,
-    fs_rights_inheriting: BigInt
+    fs_rights_base: bigint,
+    fs_rights_inheriting: bigint
   ): number {
     return -1;
   }
   fd_filestat_get(): { ret: number; filestat: wasi.Filestat | null } {
     return { ret: -1, filestat: null };
   }
-  fd_filestat_set_size(size: number | BigInt): number {
+  fd_filestat_set_size(size: number | bigint): number {
     return -1;
   }
   fd_filestat_set_times(atim, mtim, fst_flags): number {
     return -1;
   }
-  fd_pread(view8: Uint8Array, iovs, offset: number | BigInt) {
+  fd_pread(view8: Uint8Array, iovs, offset: number | bigint) {
     return { ret: -1, nread: 0 };
   }
   fd_prestat_get() {
@@ -47,7 +47,7 @@ export class Fd {
   fd_prestat_dir_name(path_ptr: number, path_len: number) {
     return { ret: -1, prestat_dir_name: null };
   }
-  fd_pwrite(view8: Uint8Array, iovs, offset: number | BigInt) {
+  fd_pwrite(view8: Uint8Array, iovs, offset: number | bigint) {
     return { ret: -1, nwritten: 0 };
   }
   fd_read(
@@ -56,17 +56,17 @@ export class Fd {
   ): { ret: number; nread: number } {
     return { ret: -1, nread: 0 };
   }
-  fd_readdir_single(cookie: BigInt) {
+  fd_readdir_single(cookie: bigint) {
     return { ret: -1, dirent: null };
   }
-  fd_seek(offset: number | BigInt, whence) {
-    return { ret: -1, offset: 0 };
+  fd_seek(offset: number | bigint, whence): { ret: number; offset: bigint } {
+    return { ret: -1, offset: 0n };
   }
   fd_sync(): number {
     return -1;
   }
-  fd_tell() {
-    return { ret: -1, offset: 0 };
+  fd_tell(): { ret: number; offset: bigint } {
+    return { ret: -1, offset: 0n };
   }
   fd_write(view8, iovs) {
     return { ret: -1, nwritten: 0 };
