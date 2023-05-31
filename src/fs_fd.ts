@@ -44,7 +44,7 @@ export class OpenFile extends Fd {
     return { ret: 0, nread };
   }
 
-  fd_seek(offset: number | BigInt, whence: number): { ret: number; offset: number } {
+  fd_seek(offset: number | BigInt, whence: number): { ret: number; offset: number | BigInt } {
     let calculated_offset: number;
     switch (whence) {
       case wasi.WHENCE_SET:

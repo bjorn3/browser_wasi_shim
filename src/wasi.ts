@@ -373,7 +373,11 @@ export default class WASI {
             offset,
             whence
           );
-          buffer.setUint32(offset_out_ptr, offset, true);
+          if (typeof offset === 'bigint') {
+            buffer.setBigInt64(offset_out_ptr, offset, true);
+          } else {
+            buffer.setInt32(offset_out_ptr, offset, true);
+          }
           return ret;
         } else {
           return wasi.ERRNO_BADF;
@@ -390,7 +394,7 @@ export default class WASI {
         let buffer = new DataView(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
           let { ret, offset } = self.fds[fd].fd_tell();
-          buffer.setUint32(offset_ptr, offset, true);
+          buffer.setInt32(offset_ptr, offset, true);
           return ret;
         } else {
           return wasi.ERRNO_BADF;
