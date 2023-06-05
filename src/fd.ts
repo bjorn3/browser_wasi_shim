@@ -2,13 +2,13 @@ import * as wasi from "./wasi_defs.js";
 
 export class Fd {
   fd_advise(
-    offset: number | bigint,
+    offset: bigint,
     len: bigint,
-    advice: number | bigint
+    advice: number
   ): number {
     return -1;
   }
-  fd_allocate(offset: number | bigint, len: bigint): number {
+  fd_allocate(offset: bigint, len: bigint): number {
     return -1;
   }
   fd_close(): number {
@@ -32,13 +32,13 @@ export class Fd {
   fd_filestat_get(): { ret: number; filestat: wasi.Filestat | null } {
     return { ret: -1, filestat: null };
   }
-  fd_filestat_set_size(size: number | bigint): number {
+  fd_filestat_set_size(size: bigint): number {
     return -1;
   }
-  fd_filestat_set_times(atim, mtim, fst_flags): number {
+  fd_filestat_set_times(atim: bigint, mtim: bigint, fst_flags: number): number {
     return -1;
   }
-  fd_pread(view8: Uint8Array, iovs, offset: number | bigint) {
+  fd_pread(view8: Uint8Array, iovs: Array<wasi.Iovec>, offset: bigint) {
     return { ret: -1, nread: 0 };
   }
   fd_prestat_get() {
@@ -47,7 +47,7 @@ export class Fd {
   fd_prestat_dir_name(path_ptr: number, path_len: number) {
     return { ret: -1, prestat_dir_name: null };
   }
-  fd_pwrite(view8: Uint8Array, iovs, offset: number | bigint) {
+  fd_pwrite(view8: Uint8Array, iovs: Array<wasi.Ciovec>, offset: bigint) {
     return { ret: -1, nwritten: 0 };
   }
   fd_read(
@@ -59,7 +59,7 @@ export class Fd {
   fd_readdir_single(cookie: bigint) {
     return { ret: -1, dirent: null };
   }
-  fd_seek(offset: number | bigint, whence): { ret: number; offset: bigint } {
+  fd_seek(offset: bigint, whence: number): { ret: number; offset: bigint } {
     return { ret: -1, offset: 0n };
   }
   fd_sync(): number {
@@ -68,7 +68,7 @@ export class Fd {
   fd_tell(): { ret: number; offset: bigint } {
     return { ret: -1, offset: 0n };
   }
-  fd_write(view8, iovs) {
+  fd_write(view8: Uint8Array, iovs: Array<wasi.Ciovec>) {
     return { ret: -1, nwritten: 0 };
   }
   path_create_directory(path): number {

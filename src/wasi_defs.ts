@@ -268,10 +268,9 @@ export class Filestat {
   mtim: bigint = 0n;
   ctim: bigint = 0n;
 
-  constructor(filetype: number, size: number | bigint) {
+  constructor(filetype: number, size: bigint) {
     this.filetype = filetype;
-    // @ts-ignore
-    this.size = BigInt(size);
+    this.size = size;
   }
 
   write_bytes(view: DataView, ptr: number) {

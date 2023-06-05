@@ -274,7 +274,7 @@ export default class WASI {
         fd: number,
         iovs_ptr: number,
         iovs_len: number,
-        offset: number,
+        offset: bigint,
         nwritten_ptr: number
       ): number {
         let buffer = new DataView(self.inst.exports.memory.buffer);
@@ -363,7 +363,7 @@ export default class WASI {
       },
       fd_seek(
         fd: number,
-        offset: number,
+        offset: bigint,
         whence: number,
         offset_out_ptr: number
       ): number {
