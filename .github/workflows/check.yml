@@ -1,11 +1,7 @@
 name: Check types
 on:
-  push:
-    branches:
-      - "main"
-  pull_request:
-    paths-ignore:
-      - "**/*.md"
+  - push
+  - pull_request
 jobs:
   build:
     runs-on: ubuntu-latest
