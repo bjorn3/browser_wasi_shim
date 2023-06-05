@@ -8,8 +8,8 @@ export class File {
     this.data = new Uint8Array(data);
   }
 
-  get size(): number {
-    return this.data.byteLength;
+  get size(): bigint {
+    return BigInt(this.data.byteLength);
   }
 
   stat(): wasi.Filestat {
@@ -29,7 +29,7 @@ export class Directory {
   }
 
   stat(): wasi.Filestat {
-    return new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0);
+    return new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0n);
   }
 
   get_entry_for_path(path: string): File | Directory | null {
