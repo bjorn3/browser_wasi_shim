@@ -80,20 +80,17 @@ export class OpenFile extends Fd {
     let nwritten = 0;
     for (let iovec of iovs) {
       let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
-      // @ts-ignore
       if (this.file_pos + BigInt(buffer.byteLength) > this.file.size) {
         let old = this.file.data;
         this.file.data = new Uint8Array(
-          // @ts-ignore
           Number(this.file_pos + BigInt(buffer.byteLength))
         );
         this.file.data.set(old);
       }
       this.file.data.set(
-        buffer.slice(0, this.file.size - Number(this.file_pos)),
+        buffer.slice(0, Number(this.file.size - this.file_pos)),
         Number(this.file_pos)
       );
-      // @ts-ignore
       this.file_pos += BigInt(buffer.byteLength);
       nwritten += iovec.buf_len;
     }
