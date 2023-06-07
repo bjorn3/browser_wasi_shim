@@ -44,8 +44,8 @@ export class OpenFile extends Fd {
     return { ret: 0, nread };
   }
 
-  fd_seek(offset: number | bigint, whence: number): { ret: number; offset: bigint } {
-    let calculated_offset: number;
+  fd_seek(offset: bigint, whence: number): { ret: number; offset: bigint } {
+    let calculated_offset: bigint;
     switch (whence) {
       case wasi.WHENCE_SET:
         // @ts-ignore
@@ -57,7 +57,7 @@ export class OpenFile extends Fd {
         break;
       case wasi.WHENCE_END:
         // @ts-ignore
-        calculated_offset = this.file.data.byteLength + offset;
+        calculated_offset = BigInt(this.file.data.byteLength) + offset;
         break;
       default:
         // @ts-ignore
@@ -69,7 +69,7 @@ export class OpenFile extends Fd {
       return { ret: wasi.ERRNO_INVAL, offset: 0n };
     }
 
-    this.file_pos = BigInt(calculated_offset);
+    this.file_pos = calculated_offset;
     return { ret: 0, offset: this.file_pos };
   }
 
@@ -80,20 +80,17 @@ export class OpenFile extends Fd {
     let nwritten = 0;
     for (let iovec of iovs) {
       let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
-      // @ts-ignore
       if (this.file_pos + BigInt(buffer.byteLength) > this.file.size) {
         let old = this.file.data;
         this.file.data = new Uint8Array(
-          // @ts-ignore
           Number(this.file_pos + BigInt(buffer.byteLength))
         );
         this.file.data.set(old);
       }
       this.file.data.set(
-        buffer.slice(0, this.file.size - Number(this.file_pos)),
+        buffer.slice(0, Number(this.file.size - this.file_pos)),
         Number(this.file_pos)
       );
-      // @ts-ignore
       this.file_pos += BigInt(buffer.byteLength);
       nwritten += iovec.buf_len;
     }
