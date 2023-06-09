@@ -66,7 +66,7 @@ export class Fd {
     return { ret: -1, offset: 0n };
   }
   fd_sync(): number {
-    return -1;
+    return 0;
   }
   fd_tell(): { ret: number; offset: bigint } {
     return { ret: -1, offset: 0n };
