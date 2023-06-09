@@ -199,18 +199,25 @@ export class Dirent {
     this.dir_name = encoded_name;
   }
 
-  length(): number {
-    return 24 + this.dir_name.byteLength;
+  head_length(): number {
+    return 24;
   }
 
-  write_bytes(view: DataView, view8: Uint8Array, ptr: number) {
+  name_length(): number {
+    return this.dir_name.byteLength;
+  }
+
+  write_head_bytes(view: DataView, ptr: number) {
     // @ts-ignore
     view.setBigUint64(ptr, this.d_next, true);
     // @ts-ignore
     view.setBigUint64(ptr + 8, this.d_ino, true);
     view.setUint32(ptr + 16, this.dir_name.length, true); // d_namlen
     view.setUint8(ptr + 20, this.d_type);
-    view8.set(this.dir_name, ptr + 24);
+  }
+
+  write_name_bytes(view8: Uint8Array, ptr: number, buf_len: number) {
+    view8.set(this.dir_name.slice(0, Math.min(this.dir_name.byteLength, buf_len)), ptr);
   }
 }
 
