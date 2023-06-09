@@ -36,17 +36,20 @@ export class Directory {
     let entry: File | Directory = this;
     for (let component of path.split("/")) {
       if (component == "") break;
-      if (this.contents[component] != undefined) {
-        entry = this.contents[component];
+      if (!(entry instanceof Directory)) {
+        return null;
+      }
+      if (entry.contents[component] != undefined) {
+        entry = entry.contents[component];
       } else {
-        //console.log(component);
+        console.log(component);
         return null;
       }
     }
     return entry;
   }
 
-  create_entry_for_path(path: string): File | Directory {
+  create_entry_for_path(path: string, is_dir: boolean): File | Directory {
     // FIXME fix type errors
     let entry: File | Directory = this;
     let components: Array<string> = path
@@ -60,7 +63,7 @@ export class Directory {
         entry = entry.contents[component];
       } else {
         //console.log("create", component);
-        if (i == components.length - 1) {
+        if ((i == components.length - 1) && !is_dir) {
           // @ts-ignore
           entry.contents[component] = new File(new ArrayBuffer(0));
         } else {
