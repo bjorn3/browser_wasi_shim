@@ -100,6 +100,10 @@ export class OpenFile extends Fd {
   fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
     return { ret: 0, filestat: this.file.stat() };
   }
+
+  fd_sync(): number {
+    return wasi.ERRNO_SUCCESS;
+  }
 }
 
 export class OpenDirectory extends Fd {
@@ -187,6 +191,10 @@ export class OpenDirectory extends Fd {
 
   path_create_directory(path: string): number {
     return this.path_open(0, path, wasi.OFLAGS_CREAT | wasi.OFLAGS_DIRECTORY, 0n, 0n, 0).ret;
+  }
+
+  fd_seek(offset: number | bigint, whence: number): { ret: number; offset: bigint } {
+    return { ret: 0, offset: 0n };
   }
 }
 
