@@ -42,7 +42,7 @@ export class Directory {
       if (entry.contents[component] != undefined) {
         entry = entry.contents[component];
       } else {
-        console.log(component);
+        //console.log(component);
         return null;
       }
     }
