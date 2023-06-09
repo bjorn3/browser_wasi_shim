@@ -157,7 +157,7 @@ export class OpenDirectory extends Fd {
     let entry = this.dir.get_entry_for_path(path);
     if (entry == null) {
       if ((oflags & wasi.OFLAGS_CREAT) == wasi.OFLAGS_CREAT) {
-        entry = this.dir.create_entry_for_path(path);
+        entry = this.dir.create_entry_for_path(path, (oflags & wasi.OFLAGS_DIRECTORY) == wasi.OFLAGS_DIRECTORY);
       } else {
         return { ret: -1, fd_obj: null };
       }
@@ -183,6 +183,10 @@ export class OpenDirectory extends Fd {
     } else {
       throw "dir entry neither file nor dir";
     }
+  }
+
+  path_create_directory(path: string): number {
+    return this.path_open(0, path, wasi.OFLAGS_CREAT | wasi.OFLAGS_DIRECTORY, 0n, 0n, 0).ret;
   }
 }
 

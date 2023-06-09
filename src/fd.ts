@@ -12,7 +12,7 @@ export class Fd {
     return -1;
   }
   fd_close(): number {
-    return -1;
+    return 0;
   }
   fd_datasync(): number {
     return -1;
@@ -56,7 +56,10 @@ export class Fd {
   ): { ret: number; nread: number } {
     return { ret: -1, nread: 0 };
   }
-  fd_readdir_single(cookie: bigint) {
+  fd_readdir_single(cookie: bigint): {
+    ret: number;
+    dirent: wasi.Dirent | null;
+  } {
     return { ret: -1, dirent: null };
   }
   fd_seek(offset: bigint, whence: number): { ret: number; offset: bigint } {

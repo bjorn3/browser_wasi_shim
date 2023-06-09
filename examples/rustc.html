@@ -1,3 +1,9 @@
+<!--
+
+See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how to use this example.
+
+-->
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -13,6 +19,7 @@
 </head>
 <body>
 <div id="terminal"></div>
+<div id="downloads"></div>
 <script type="module">
     import { Fd } from "../dist/fd.js";
     import { File, Directory } from "../dist/fs_core.js";
@@ -50,7 +57,7 @@
 
     (async function () {
         term.writeln("\x1B[93mDownloading\x1B[0m");
-        let wasm = await WebAssembly.compileStreaming(fetch("rustc_binary.wasm"));
+        let wasm = await WebAssembly.compileStreaming(fetch("wasm-rustc/bin/rustc.wasm"));
         //let wasm = await WebAssembly.compileStreaming(fetch("/rust_out.wasm"));
         term.writeln("\x1B[93mInstantiating\x1B[0m");
 
@@ -58,16 +65,13 @@
             return new File(await (await (await fetch(path)).blob()).arrayBuffer());
         }
 
-        let args = ["rustc", "./hello.rs", "--sysroot", "/sysroot", "--target", "x86_64-unknown-linux-gnu", "-Cpanic=abort", "-Ccodegen-units=1"];
-        let env = ["RUSTC_LOG=trace"];
+        let args = ["rustc", "/hello.rs", "--sysroot", "/sysroot", "--target", "x86_64-unknown-linux-gnu", "-Cpanic=abort", "-Ccodegen-units=1"];
+        let env = ["RUSTC_LOG=info"];
         let fds = [
             new XtermStdio(term),
             new XtermStdio(term),
             new XtermStdio(term),
             new PreopenDirectory("/tmp", {}),
-            new PreopenDirectory(".", {
-                "hello.rs": new File(new TextEncoder("utf-8").encode(`fn main() { println!("Hello World!"); }`)),
-            }),
             new PreopenDirectory("/sysroot", {
                 "lib": new Directory({
                     "rustlib": new Directory({
@@ -78,28 +82,45 @@
                             "lib": new Directory(await (async function () {
                                 let dir = {};
                                 for (let file of [
-                                    "libcore-b4a7d25c83ac0d14.rlib",
-                                    "librustc_std_workspace_core-18038143f92ab7ad.rlib",
-                                    "libcompiler_builtins-f0b22b2b55b20afb.rlib",
-                                    "liballoc-072489b01506fb72.rlib",
-                                    "librustc_std_workspace_alloc-eeb0fd7b28eabbfd.rlib",
-                                    "liblibc-f3a5d2870a74e12d.rlib",
-                                    "libunwind-d85e8e3df3b56ff5.rlib",
-                                    "libcfg_if-6b32ca81b3ffdff5.rlib",
-                                    "libbacktrace_sys-93675d780e5d0925.rlib",
-                                    "libbacktrace-30a7c0899d033fc0.rlib",
-                                    "librustc_demangle-92b41332709a8741.rlib",
-                                    "libhashbrown-f92f11aad8210abe.rlib",
-                                    "libstd-358912be09271fe6.rlib",
-                                    "libpanic_abort-9fa38857c2678ded.rlib",
+                                    "libaddr2line-60dea794f80c3ef4.rlib",
+                                    "libadler-d65038594e8cfab3.rlib",
+                                    "liballoc-0de515ba820cdcfa.rlib",
+                                    "libcfg_if-3714295220178beb.rlib",
+                                    "libcompiler_builtins-7deb5fdc76bc68b0.rlib",
+                                    "libcore-1ba018e205a91c17.rlib",
+                                    "libgetopts-f8b396edfb838e11.rlib",
+                                    "libgimli-b7851eb24fb241ab.rlib",
+                                    "libhashbrown-c62361fbb728cc4b.rlib",
+                                    "liblibc-273011445e6504c2.rlib",
+                                    "libmemchr-b587b3bc8d98b4b8.rlib",
+                                    "libminiz_oxide-2d239bf53ecd5d89.rlib",
+                                    "libobject-7b62e7dc54fb7cd7.rlib",
+                                    "libpanic_abort-f0b7506e2ba2830d.rlib",
+                                    "libpanic_unwind-1b641924c3354893.rlib",
+                                    "libproc_macro-e663e39f4c73449c.rlib",
+                                    "librustc_demangle-be7b16a50397ed9c.rlib",
+                                    "librustc_std_workspace_alloc-c0347e439fe1bd8a.rlib",
+                                    "librustc_std_workspace_core-04b73f4c30e9e1dd.rlib",
+                                    "librustc_std_workspace_std-f4bb462fd2254ada.rlib",
+                                    "libstd-21ea728213f8218b.rlib",
+                                    "libstd-21ea728213f8218b.so",
+                                    "libstd_detect-2f7c6cdb3add68c0.rlib",
+                                    "libsysroot-58b33ba40d3a21e1.rlib",
+                                    "libtest-5715830a776353f9.rlib",
+                                    "libtest-5715830a776353f9.so",
+                                    "libunicode_width-5ae0afd9a72d6422.rlib",
+                                    "libunwind-d6ab645e2fcde9a0.rlib",
                                 ]) {
-                                    dir[file] = await load_external_file("/sysroot/lib/rustlib/x86_64-unknown-linux-gnu/lib/" + file);
+                                    dir[file] = await load_external_file("/examples/wasm-rustc/lib/rustlib/x86_64-unknown-linux-gnu/lib/" + file);
                                 }
                                 return dir;
                             })()),
                         }),
                     }),
                 }),
+            }),
+            new PreopenDirectory("/", {
+                "hello.rs": new File(new TextEncoder("utf-8").encode(`fn main() { println!("Hello World!"); }`)),
             }),
         ];
 
@@ -110,13 +131,14 @@
         });
         term.writeln("\x1B[93mExecuting\x1B[0m");
         console.log(inst.exports);
-        w.start(inst);
+        try { w.start(inst); } catch(e) { term.writeln(e); }
         term.writeln("\x1B[92mDone\x1B[0m");
 
-        console.log(fds[4].directory);
-        console.log(fds[4].directory["hello.hello.7rcbfp3g-cgu.0.rcgu.o"].data);
-        document.body.innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[4].directory["hello.hello.7rcbfp3g-cgu.0.rcgu.o"].data], { type: "application/elf" })) + "'>Download object</a>";
-        document.body.innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[4].directory["hello.allocator_shim.rcgu.o"].data], { type: "application/elf" })) + "'>Download allocator shim</a>";
+        console.log(fds);
+        console.log(fds[5].dir);
+        console.log(fds[5].dir.contents["hello.hello.7631c747841c2a99-cgu.0.rcgu.o"].data);
+        document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents["hello.hello.7631c747841c2a99-cgu.0.rcgu.o"].data], { type: "application/elf" })) + "'>Download object</a>";
+        document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents["hello.allocator_shim.rcgu.o"].data], { type: "application/elf" })) + "'>Download allocator shim</a>";
     })();
 </script>
 </body>
