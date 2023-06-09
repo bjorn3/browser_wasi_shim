@@ -67,7 +67,7 @@
             new XtermStdio(term),
             new PreopenDirectory("/tmp", {}),
             new PreopenDirectory("/sysroot", {
-                "lib32": new Directory({
+                "lib": new Directory({
                     "rustlib": new Directory({
                         "wasm32-wasi": new Directory({
                             "lib": new Directory({}),
