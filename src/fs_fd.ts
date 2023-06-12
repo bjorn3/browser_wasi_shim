@@ -141,7 +141,7 @@ export class OpenDirectory extends Fd {
   ): { ret: number; filestat: wasi.Filestat | null } {
     let entry = this.dir.get_entry_for_path(path);
     if (entry == null) {
-      return { ret: -1, filestat: null };
+      return { ret: wasi.ERRNO_EXIST, filestat: null };
     }
     return { ret: 0, filestat: entry.stat() };
   }
