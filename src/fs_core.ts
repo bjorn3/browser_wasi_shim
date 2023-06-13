@@ -36,6 +36,7 @@ export class Directory {
     let entry: File | Directory = this;
     for (let component of path.split("/")) {
       if (component == "") break;
+      if (component == ".") continue;
       if (!(entry instanceof Directory)) {
         return null;
       }
