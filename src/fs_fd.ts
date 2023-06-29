@@ -103,10 +103,6 @@ export class OpenFile extends Fd {
 }
 
 export class OpenSyncOPFSFile extends Fd {
-
-  // TODO: remove this before merging
-  private get prefix() { return [ `%c DEBUG OpenOPFSFile `, 'background: green; color: white;' ]; }
-
   handle: FileSystemSyncAccessHandle;
   position: bigint = 0n;
 
@@ -116,23 +112,19 @@ export class OpenSyncOPFSFile extends Fd {
   };
 
   fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
-    console.log(...this.prefix, "called fd_fdstat_get()");
     return { ret: 0, fdstat: new wasi.Fdstat(wasi.FILETYPE_REGULAR_FILE, 0) };
   }
 
   fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
-    console.log(...this.prefix, "called fd_filestat_get() =", BigInt(this.handle.getSize()));
     return { ret: 0, filestat: new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, BigInt(this.handle.getSize())) };
   }
 
   fd_read(view8: Uint8Array, iovs: Array<wasi.Iovec>): { ret: number, nread: number } {
-    console.log(...this.prefix, "called fd_read(", view8, iovs, ")");
     let nread = 0;
     for (let iovec of iovs) {
       if (this.position < this.handle.getSize()) {
         let buf = new Uint8Array(view8.buffer, iovec.buf, iovec.buf_len);
         let n = this.handle.read(buf, { at: Number(this.position) });
-        console.log(...this.prefix, `read ${n} bytes into buffer:`, buf);
         this.position += BigInt(n);
         nread += n;
       } else {
@@ -143,7 +135,6 @@ export class OpenSyncOPFSFile extends Fd {
   }
 
   fd_seek(offset: number | bigint, whence: number): { ret: number, offset: bigint } {
-    console.log(...this.prefix, "called fd_seek(", offset, whence, ")");
     let calculated_offset: bigint;
     switch (whence) {
       case wasi.WHENCE_SET:
@@ -166,10 +157,9 @@ export class OpenSyncOPFSFile extends Fd {
   }
 
   fd_write(view8: Uint8Array, iovs: Array<wasi.Iovec>): { ret: number, nwritten: number } {
-    console.log(...this.prefix, "called fd_write(", view8, iovs, ")");
     let nwritten = 0;
     for (let iovec of iovs) {
-      let buf = new Uint8Array(view8.buffer, iovec.buf, iovec.buf + iovec.buf_len);
+      let buf = new Uint8Array(view8.buffer, iovec.buf, iovec.buf_len);
       // don't need to extend file manually, just write
       let n = this.handle.write(buf, { at: Number(this.position) });
       this.position += BigInt(n);
@@ -178,9 +168,16 @@ export class OpenSyncOPFSFile extends Fd {
     return { ret: wasi.ERRNO_SUCCESS, nwritten };
   }
 
+  fd_datasync(): number {
+    this.handle.flush();
+    return wasi.ERRNO_SUCCESS;
+  }
+
+  fd_sync(): number {
+    return this.fd_datasync();
+  }
+
   fd_close(): number {
-    console.log(...this.prefix, "called close()");
-    this.handle.close();
     return wasi.ERRNO_SUCCESS;
   }
 
@@ -258,7 +255,7 @@ export class OpenDirectory extends Fd {
       // @ts-ignore
       entry.truncate();
     }
-    return { ret: 0, fd_obj: entry.open() };
+    return { ret: 0, fd_obj: entry.open(fd_flags) };
   }
 
   path_create_directory(path: string): number {

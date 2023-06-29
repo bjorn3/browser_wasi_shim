@@ -9,8 +9,10 @@ export class File {
     this.data = new Uint8Array(data);
   }
 
-  open() {
-    return new OpenFile(this);
+  open(fd_flags: number) {
+    let file = new OpenFile(this);
+    if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
+    return file;
   }
 
   get size(): bigint {
@@ -37,10 +39,13 @@ export interface FileSystemSyncAccessHandle {
 }
 
 export class SyncOPFSFile {
+  // FIXME needs a close() method to be called after start() to release the underlying handle
   constructor(public handle: FileSystemSyncAccessHandle) { }
 
-  open() {
-    return new OpenSyncOPFSFile(this);
+  open(fd_flags: number) {
+    let file = new OpenSyncOPFSFile(this);
+    if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
+    return file;
   }
 
   get size(): bigint {
@@ -64,7 +69,7 @@ export class Directory {
     this.contents = contents;
   }
 
-  open() {
+  open(fd_flags: number) {
     return new OpenDirectory(this);
   }
 
