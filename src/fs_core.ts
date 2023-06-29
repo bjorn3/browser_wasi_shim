@@ -31,11 +31,11 @@ export class File {
 // Shim for https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle
 // This is not part of the public interface.
 export interface FileSystemSyncAccessHandle {
-  close(): undefined;
-  flush(): undefined;
+  close(): void;
+  flush(): void;
   getSize(): number;
   read(buffer: ArrayBuffer | ArrayBufferView, options?: { at: number }): number;
-  truncate(to: number): undefined;
+  truncate(to: number): void;
   write(buffer: ArrayBuffer | ArrayBufferView, options?: { at: number }): number;
 }
 
