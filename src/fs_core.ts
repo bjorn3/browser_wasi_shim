@@ -21,10 +21,37 @@ export class File {
   }
 }
 
-export class Directory {
-  contents: { [key: string]: File | Directory };
+// shim https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle
+export interface FileSystemSyncAccessHandle {
+  close(): undefined;
+  flush(): undefined;
+  getSize(): number;
+  read(buffer: ArrayBuffer | ArrayBufferView, options?: { at: number }): number;
+  truncate(to: number): undefined;
+  write(buffer: ArrayBuffer | ArrayBufferView, options?: { at: number }): number;
+}
 
-  constructor(contents: { [key: string]: File | Directory }) {
+export class SyncOPFSFile {
+  constructor(public handle: FileSystemSyncAccessHandle) { }
+
+  get size(): bigint {
+    return BigInt(this.handle.getSize());
+  }
+
+  stat(): wasi.Filestat {
+    return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
+  }
+
+  truncate() {
+    return this.handle.truncate(0);
+  }
+
+}
+
+export class Directory {
+  contents: { [key: string]: File | Directory | SyncOPFSFile };
+
+  constructor(contents: { [key: string]: File | Directory | SyncOPFSFile }) {
     this.contents = contents;
   }
 
@@ -32,8 +59,8 @@ export class Directory {
     return new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0n);
   }
 
-  get_entry_for_path(path: string): File | Directory | null {
-    let entry: File | Directory = this;
+  get_entry_for_path(path: string): File | Directory | SyncOPFSFile | null {
+    let entry: File | Directory | SyncOPFSFile = this;
     for (let component of path.split("/")) {
       if (component == "") break;
       if (component == ".") continue;
