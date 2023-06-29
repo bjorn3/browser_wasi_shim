@@ -28,7 +28,8 @@ export class File {
   }
 }
 
-// shim https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle
+// Shim for https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle
+// This is not part of the public interface.
 export interface FileSystemSyncAccessHandle {
   close(): undefined;
   flush(): undefined;
