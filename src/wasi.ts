@@ -18,6 +18,7 @@ export default class WASI {
 
   /// Start a WASI command
   start(instance: {
+    // FIXME v0.3: close opened Fds after execution
     exports: { memory: WebAssembly.Memory; _start: () => mixed };
   }) {
     this.inst = instance;
