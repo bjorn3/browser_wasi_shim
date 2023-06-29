@@ -1,3 +1,4 @@
+import { OpenDirectory, OpenFile, OpenSyncOPFSFile } from "./fs_fd.js";
 import * as wasi from "./wasi_defs.js";
 
 export class File {
@@ -6,6 +7,10 @@ export class File {
   constructor(data: ArrayBuffer | Uint8Array | Array<number>) {
     //console.log(data);
     this.data = new Uint8Array(data);
+  }
+
+  open() {
+    return new OpenFile(this);
   }
 
   get size(): bigint {
@@ -34,6 +39,10 @@ export interface FileSystemSyncAccessHandle {
 export class SyncOPFSFile {
   constructor(public handle: FileSystemSyncAccessHandle) { }
 
+  open() {
+    return new OpenSyncOPFSFile(this);
+  }
+
   get size(): bigint {
     return BigInt(this.handle.getSize());
   }
@@ -53,6 +62,10 @@ export class Directory {
 
   constructor(contents: { [key: string]: File | Directory | SyncOPFSFile }) {
     this.contents = contents;
+  }
+
+  open() {
+    return new OpenDirectory(this);
   }
 
   stat(): wasi.Filestat {

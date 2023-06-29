@@ -258,17 +258,7 @@ export class OpenDirectory extends Fd {
       // @ts-ignore
       entry.truncate();
     }
-    // FIXME handle this more elegantly
-    if (entry instanceof File) {
-      // @ts-ignore
-      return { ret: 0, fd_obj: new OpenFile(entry) };
-    } else if (entry instanceof SyncOPFSFile) {
-      return { ret: 0, fd_obj: new OpenSyncOPFSFile(entry) }
-    } else if (entry instanceof Directory) {
-      return { ret: 0, fd_obj: new OpenDirectory(entry) };
-    } else {
-      throw "dir entry neither file nor dir";
-    }
+    return { ret: 0, fd_obj: entry.open() };
   }
 
   path_create_directory(path: string): number {
