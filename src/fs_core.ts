@@ -39,6 +39,8 @@ export interface FileSystemSyncAccessHandle {
   write(buffer: ArrayBuffer | ArrayBufferView, options?: { at: number }): number;
 }
 
+// Synchronous access to an individual file in the origin private file system.
+// Only allowed inside a WebWorker.
 export class SyncOPFSFile {
   // FIXME needs a close() method to be called after start() to release the underlying handle
   constructor(public handle: FileSystemSyncAccessHandle) { }
