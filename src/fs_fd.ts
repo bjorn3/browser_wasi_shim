@@ -1,5 +1,5 @@
 import * as wasi from "./wasi_defs.js";
-import { File, Directory } from "./fs_core.js";
+import { File, Directory, SyncOPFSFile, FileSystemSyncAccessHandle } from "./fs_core.js";
 import { Fd } from "./fd.js";
 
 declare var TextEncoder: {
@@ -102,6 +102,87 @@ export class OpenFile extends Fd {
   }
 }
 
+export class OpenSyncOPFSFile extends Fd {
+  handle: FileSystemSyncAccessHandle;
+  position: bigint = 0n;
+
+  constructor(file: SyncOPFSFile) {
+    super();
+    this.handle = file.handle;
+  };
+
+  fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
+    return { ret: 0, fdstat: new wasi.Fdstat(wasi.FILETYPE_REGULAR_FILE, 0) };
+  }
+
+  fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
+    return { ret: 0, filestat: new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, BigInt(this.handle.getSize())) };
+  }
+
+  fd_read(view8: Uint8Array, iovs: Array<wasi.Iovec>): { ret: number, nread: number } {
+    let nread = 0;
+    for (let iovec of iovs) {
+      if (this.position < this.handle.getSize()) {
+        let buf = new Uint8Array(view8.buffer, iovec.buf, iovec.buf_len);
+        let n = this.handle.read(buf, { at: Number(this.position) });
+        this.position += BigInt(n);
+        nread += n;
+      } else {
+        break;
+      }
+    }
+    return { ret: 0, nread };
+  }
+
+  fd_seek(offset: number | bigint, whence: number): { ret: number, offset: bigint } {
+    let calculated_offset: bigint;
+    switch (whence) {
+      case wasi.WHENCE_SET:
+        calculated_offset = BigInt(offset);
+        break;
+      case wasi.WHENCE_CUR:
+        calculated_offset = this.position + BigInt(offset);
+        break;
+      case wasi.WHENCE_END:
+        calculated_offset = BigInt(this.handle.getSize()) + BigInt(offset);
+        break;
+      default:
+        return { ret: wasi.ERRNO_INVAL, offset: 0n };
+    }
+    if (calculated_offset < 0) {
+      return { ret: wasi.ERRNO_INVAL, offset: 0n };
+    }
+    this.position = calculated_offset;
+    return { ret: wasi.ERRNO_SUCCESS, offset: this.position };
+  }
+
+  fd_write(view8: Uint8Array, iovs: Array<wasi.Iovec>): { ret: number, nwritten: number } {
+    let nwritten = 0;
+    for (let iovec of iovs) {
+      let buf = new Uint8Array(view8.buffer, iovec.buf, iovec.buf_len);
+      // don't need to extend file manually, just write
+      let n = this.handle.write(buf, { at: Number(this.position) });
+      this.position += BigInt(n);
+      nwritten += n;
+    }
+    return { ret: wasi.ERRNO_SUCCESS, nwritten };
+  }
+
+  fd_datasync(): number {
+    this.handle.flush();
+    return wasi.ERRNO_SUCCESS;
+  }
+
+  fd_sync(): number {
+    return this.fd_datasync();
+  }
+
+  fd_close(): number {
+    return wasi.ERRNO_SUCCESS;
+  }
+
+}
+
 export class OpenDirectory extends Fd {
   dir: Directory;
 
@@ -174,15 +255,7 @@ export class OpenDirectory extends Fd {
       // @ts-ignore
       entry.truncate();
     }
-    // FIXME handle this more elegantly
-    if (entry instanceof File) {
-      // @ts-ignore
-      return { ret: 0, fd_obj: new OpenFile(entry) };
-    } else if (entry instanceof Directory) {
-      return { ret: 0, fd_obj: new OpenDirectory(entry) };
-    } else {
-      throw "dir entry neither file nor dir";
-    }
+    return { ret: 0, fd_obj: entry.open(fd_flags) };
   }
 
   path_create_directory(path: string): number {
@@ -193,7 +266,7 @@ export class OpenDirectory extends Fd {
 export class PreopenDirectory extends OpenDirectory {
   prestat_name: Uint8Array;
 
-  constructor(name: string, contents: { [key: string]: File | Directory }) {
+  constructor(name: string, contents: { [key: string]: File | Directory | SyncOPFSFile }) {
     super(new Directory(contents));
     this.prestat_name = new TextEncoder("utf-8").encode(name);
   }

@@ -1,3 +1,4 @@
+import { OpenDirectory, OpenFile, OpenSyncOPFSFile } from "./fs_fd.js";
 import * as wasi from "./wasi_defs.js";
 
 export class File {
@@ -6,6 +7,12 @@ export class File {
   constructor(data: ArrayBuffer | Uint8Array | Array<number>) {
     //console.log(data);
     this.data = new Uint8Array(data);
+  }
+
+  open(fd_flags: number) {
+    let file = new OpenFile(this);
+    if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
+    return file;
   }
 
   get size(): bigint {
@@ -21,19 +28,60 @@ export class File {
   }
 }
 
-export class Directory {
-  contents: { [key: string]: File | Directory };
+// Shim for https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle
+// This is not part of the public interface.
+export interface FileSystemSyncAccessHandle {
+  close(): void;
+  flush(): void;
+  getSize(): number;
+  read(buffer: ArrayBuffer | ArrayBufferView, options?: { at: number }): number;
+  truncate(to: number): void;
+  write(buffer: ArrayBuffer | ArrayBufferView, options?: { at: number }): number;
+}
 
-  constructor(contents: { [key: string]: File | Directory }) {
+// Synchronous access to an individual file in the origin private file system.
+// Only allowed inside a WebWorker.
+export class SyncOPFSFile {
+  // FIXME needs a close() method to be called after start() to release the underlying handle
+  constructor(public handle: FileSystemSyncAccessHandle) { }
+
+  open(fd_flags: number) {
+    let file = new OpenSyncOPFSFile(this);
+    if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
+    return file;
+  }
+
+  get size(): bigint {
+    return BigInt(this.handle.getSize());
+  }
+
+  stat(): wasi.Filestat {
+    return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
+  }
+
+  truncate() {
+    return this.handle.truncate(0);
+  }
+
+}
+
+export class Directory {
+  contents: { [key: string]: File | Directory | SyncOPFSFile };
+
+  constructor(contents: { [key: string]: File | Directory | SyncOPFSFile }) {
     this.contents = contents;
+  }
+
+  open(fd_flags: number) {
+    return new OpenDirectory(this);
   }
 
   stat(): wasi.Filestat {
     return new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0n);
   }
 
-  get_entry_for_path(path: string): File | Directory | null {
-    let entry: File | Directory = this;
+  get_entry_for_path(path: string): File | Directory | SyncOPFSFile | null {
+    let entry: File | Directory | SyncOPFSFile = this;
     for (let component of path.split("/")) {
       if (component == "") break;
       if (component == ".") continue;
