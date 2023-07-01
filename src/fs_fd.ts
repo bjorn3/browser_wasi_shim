@@ -78,6 +78,7 @@ export class OpenFile extends Fd {
     iovs: Array<wasi.Ciovec>
   ): { ret: number; nwritten: number } {
     let nwritten = 0;
+    if (this.file.readonly) return { ret: wasi.ERRNO_ROFS, nwritten };
     for (let iovec of iovs) {
       let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
       if (this.file_pos + BigInt(buffer.byteLength) > this.file.size) {
@@ -103,12 +104,12 @@ export class OpenFile extends Fd {
 }
 
 export class OpenSyncOPFSFile extends Fd {
-  handle: FileSystemSyncAccessHandle;
+  file: SyncOPFSFile;
   position: bigint = 0n;
 
   constructor(file: SyncOPFSFile) {
     super();
-    this.handle = file.handle;
+    this.file = file;
   };
 
   fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
@@ -116,15 +117,15 @@ export class OpenSyncOPFSFile extends Fd {
   }
 
   fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
-    return { ret: 0, filestat: new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, BigInt(this.handle.getSize())) };
+    return { ret: 0, filestat: new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, BigInt(this.file.handle.getSize())) };
   }
 
   fd_read(view8: Uint8Array, iovs: Array<wasi.Iovec>): { ret: number, nread: number } {
     let nread = 0;
     for (let iovec of iovs) {
-      if (this.position < this.handle.getSize()) {
+      if (this.position < this.file.handle.getSize()) {
         let buf = new Uint8Array(view8.buffer, iovec.buf, iovec.buf_len);
-        let n = this.handle.read(buf, { at: Number(this.position) });
+        let n = this.file.handle.read(buf, { at: Number(this.position) });
         this.position += BigInt(n);
         nread += n;
       } else {
@@ -144,7 +145,7 @@ export class OpenSyncOPFSFile extends Fd {
         calculated_offset = this.position + BigInt(offset);
         break;
       case wasi.WHENCE_END:
-        calculated_offset = BigInt(this.handle.getSize()) + BigInt(offset);
+        calculated_offset = BigInt(this.file.handle.getSize()) + BigInt(offset);
         break;
       default:
         return { ret: wasi.ERRNO_INVAL, offset: 0n };
@@ -158,10 +159,11 @@ export class OpenSyncOPFSFile extends Fd {
 
   fd_write(view8: Uint8Array, iovs: Array<wasi.Iovec>): { ret: number, nwritten: number } {
     let nwritten = 0;
+    if (this.file.readonly) return { ret: wasi.ERRNO_ROFS, nwritten };
     for (let iovec of iovs) {
       let buf = new Uint8Array(view8.buffer, iovec.buf, iovec.buf_len);
       // don't need to extend file manually, just write
-      let n = this.handle.write(buf, { at: Number(this.position) });
+      let n = this.file.handle.write(buf, { at: Number(this.position) });
       this.position += BigInt(n);
       nwritten += n;
     }
@@ -169,7 +171,7 @@ export class OpenSyncOPFSFile extends Fd {
   }
 
   fd_datasync(): number {
-    this.handle.flush();
+    this.file.handle.flush();
     return wasi.ERRNO_SUCCESS;
   }
 
@@ -250,6 +252,11 @@ export class OpenDirectory extends Fd {
       entry.stat().filetype != wasi.FILETYPE_DIRECTORY
     ) {
       return { ret: -1, fd_obj: null };
+    }
+    if (entry.readonly &&
+      (fs_rights_base & BigInt(wasi.RIGHTS_FD_WRITE)) == BigInt(wasi.RIGHTS_FD_WRITE)
+    ) {
+      return { ret: wasi.ERRNO_PERM, fd_obj: null };
     }
     if ((oflags & wasi.OFLAGS_TRUNC) == wasi.OFLAGS_TRUNC) {
       // @ts-ignore
