@@ -29,9 +29,10 @@ export class File {
     return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
   }
 
-  truncate() {
-    if (this.readonly) throw "readonly file!";
+  truncate(): number {
+    if (this.readonly) return wasi.ERRNO_PERM;
     this.data = new Uint8Array([]);
+    return wasi.ERRNO_SUCCESS;
   }
 }
 
@@ -72,9 +73,10 @@ export class SyncOPFSFile {
     return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
   }
 
-  truncate() {
-    if (this.readonly) throw "readonly file!";
-    return this.handle.truncate(0);
+  truncate(): number {
+    if (this.readonly) return wasi.ERRNO_PERM;
+    this.handle.truncate(0);
+    return wasi.ERRNO_SUCCESS;
   }
 
 }

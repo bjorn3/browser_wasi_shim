@@ -258,9 +258,13 @@ export class OpenDirectory extends Fd {
     ) {
       return { ret: wasi.ERRNO_PERM, fd_obj: null };
     }
-    if ((oflags & wasi.OFLAGS_TRUNC) == wasi.OFLAGS_TRUNC) {
-      // @ts-ignore
-      entry.truncate();
+    if (
+      (!(entry instanceof Directory)) &&
+      (oflags & wasi.OFLAGS_TRUNC) == wasi.OFLAGS_TRUNC
+    ) {
+      let ret = entry.truncate();
+      if (ret != wasi.ERRNO_SUCCESS)
+        return { ret, fd_obj: null };
     }
     return { ret: 0, fd_obj: entry.open(fd_flags) };
   }
