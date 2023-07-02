@@ -78,7 +78,7 @@ export class OpenFile extends Fd {
     iovs: Array<wasi.Ciovec>
   ): { ret: number; nwritten: number } {
     let nwritten = 0;
-    if (this.file.readonly) return { ret: wasi.ERRNO_ROFS, nwritten };
+    if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten };
     for (let iovec of iovs) {
       let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
       if (this.file_pos + BigInt(buffer.byteLength) > this.file.size) {
@@ -159,7 +159,7 @@ export class OpenSyncOPFSFile extends Fd {
 
   fd_write(view8: Uint8Array, iovs: Array<wasi.Iovec>): { ret: number, nwritten: number } {
     let nwritten = 0;
-    if (this.file.readonly) return { ret: wasi.ERRNO_ROFS, nwritten };
+    if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten };
     for (let iovec of iovs) {
       let buf = new Uint8Array(view8.buffer, iovec.buf, iovec.buf_len);
       // don't need to extend file manually, just write
