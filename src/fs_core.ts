@@ -1,12 +1,18 @@
 import { OpenDirectory, OpenFile, OpenSyncOPFSFile } from "./fs_fd.js";
 import * as wasi from "./wasi_defs.js";
 
+// options that can be passed to Files and SyncOPFSFiles
+type FileOptions = Partial<{
+  readonly: boolean;
+}>;
+
 export class File {
   data: Uint8Array;
+  readonly: boolean;
 
-  constructor(data: ArrayBuffer | Uint8Array | Array<number>) {
-    //console.log(data);
+  constructor(data: ArrayBuffer | SharedArrayBuffer | Uint8Array | Array<number>, options?: FileOptions) {
     this.data = new Uint8Array(data);
+    this.readonly = !!options?.readonly;
   }
 
   open(fd_flags: number) {
@@ -23,8 +29,10 @@ export class File {
     return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
   }
 
-  truncate() {
+  truncate(): number {
+    if (this.readonly) return wasi.ERRNO_PERM;
     this.data = new Uint8Array([]);
+    return wasi.ERRNO_SUCCESS;
   }
 }
 
@@ -42,8 +50,14 @@ export interface FileSystemSyncAccessHandle {
 // Synchronous access to an individual file in the origin private file system.
 // Only allowed inside a WebWorker.
 export class SyncOPFSFile {
+  handle: FileSystemSyncAccessHandle;
+  readonly: boolean;
+
   // FIXME needs a close() method to be called after start() to release the underlying handle
-  constructor(public handle: FileSystemSyncAccessHandle) { }
+  constructor(handle: FileSystemSyncAccessHandle, options?: FileOptions) {
+    this.handle = handle;
+    this.readonly = !!options?.readonly;
+  }
 
   open(fd_flags: number) {
     let file = new OpenSyncOPFSFile(this);
@@ -59,14 +73,17 @@ export class SyncOPFSFile {
     return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
   }
 
-  truncate() {
-    return this.handle.truncate(0);
+  truncate(): number {
+    if (this.readonly) return wasi.ERRNO_PERM;
+    this.handle.truncate(0);
+    return wasi.ERRNO_SUCCESS;
   }
 
 }
 
 export class Directory {
   contents: { [key: string]: File | Directory | SyncOPFSFile };
+  readonly = false; // FIXME implement, like marking all files within readonly?
 
   constructor(contents: { [key: string]: File | Directory | SyncOPFSFile }) {
     this.contents = contents;
