@@ -664,6 +664,9 @@ export default class WASI {
       sock_shutdown(fd: number, how) {
         throw "sockets not supported";
       },
+      sock_accept(fd: number, flags) {
+        throw "sockets not supported";
+      },
     };
   }
 }
