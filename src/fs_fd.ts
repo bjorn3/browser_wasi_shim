@@ -240,33 +240,39 @@ export class OpenDirectory extends Fd {
     let entry = this.dir.get_entry_for_path(path);
     if (entry == null) {
       if ((oflags & wasi.OFLAGS_CREAT) == wasi.OFLAGS_CREAT) {
+        // doesn't exist, but shall be created
         entry = this.dir.create_entry_for_path(path, (oflags & wasi.OFLAGS_DIRECTORY) == wasi.OFLAGS_DIRECTORY);
       } else {
-        return { ret: -1, fd_obj: null };
+        // doesn't exist, no such file
+        return { ret: wasi.ERRNO_NOENT, fd_obj: null };
       }
     } else if ((oflags & wasi.OFLAGS_EXCL) == wasi.OFLAGS_EXCL) {
-      return { ret: -1, fd_obj: null };
+      // was supposed to be created exclusively, but exists already
+      return { ret: wasi.ERRNO_EXIST, fd_obj: null };
     }
     if (
       (oflags & wasi.OFLAGS_DIRECTORY) == wasi.OFLAGS_DIRECTORY &&
       entry.stat().filetype != wasi.FILETYPE_DIRECTORY
     ) {
-      return { ret: -1, fd_obj: null };
+      // file is actually a directory
+      return { ret: wasi.ERRNO_ISDIR, fd_obj: null };
     }
     if (entry.readonly &&
       (fs_rights_base & BigInt(wasi.RIGHTS_FD_WRITE)) == BigInt(wasi.RIGHTS_FD_WRITE)
     ) {
+      // no write permission to file
       return { ret: wasi.ERRNO_PERM, fd_obj: null };
     }
     if (
       (!(entry instanceof Directory)) &&
       (oflags & wasi.OFLAGS_TRUNC) == wasi.OFLAGS_TRUNC
     ) {
+      // truncate existing file first
       let ret = entry.truncate();
       if (ret != wasi.ERRNO_SUCCESS)
         return { ret, fd_obj: null };
     }
-    return { ret: 0, fd_obj: entry.open(fd_flags) };
+    return { ret: wasi.ERRNO_SUCCESS, fd_obj: entry.open(fd_flags) };
   }
 
   path_create_directory(path: string): number {
