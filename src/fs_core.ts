@@ -1,3 +1,4 @@
+import { debug } from "./debug.js";
 import { OpenDirectory, OpenFile, OpenSyncOPFSFile } from "./fs_fd.js";
 import * as wasi from "./wasi_defs.js";
 
@@ -19,7 +20,7 @@ export class File {
   }
 
   open(fd_flags: number) {
-    let file = new OpenFile(this);
+    const file = new OpenFile(this);
     if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
     return file;
   }
@@ -66,7 +67,7 @@ export class SyncOPFSFile {
   }
 
   open(fd_flags: number) {
-    let file = new OpenSyncOPFSFile(this);
+    const file = new OpenSyncOPFSFile(this);
     if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
     return file;
   }
@@ -94,6 +95,7 @@ export class Directory {
     this.contents = contents;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   open(fd_flags: number) {
     return new OpenDirectory(this);
   }
@@ -104,7 +106,7 @@ export class Directory {
 
   get_entry_for_path(path: string): File | Directory | SyncOPFSFile | null {
     let entry: File | Directory | SyncOPFSFile = this;
-    for (let component of path.split("/")) {
+    for (const component of path.split("/")) {
       if (component == "") break;
       if (component == ".") continue;
       if (!(entry instanceof Directory)) {
@@ -113,38 +115,40 @@ export class Directory {
       if (entry.contents[component] != undefined) {
         entry = entry.contents[component];
       } else {
-        //console.log(component);
+        debug.log(component);
         return null;
       }
     }
     return entry;
   }
 
-  create_entry_for_path(path: string, is_dir: boolean): File | Directory {
-    // FIXME fix type errors
-    let entry: File | Directory = this;
-    let components: Array<string> = path
+  create_entry_for_path(
+    path: string,
+    is_dir: boolean,
+  ): File | Directory | SyncOPFSFile {
+    let entry: File | Directory | SyncOPFSFile = this;
+
+    const components: Array<string> = path
       .split("/")
       .filter((component) => component != "/");
     for (let i = 0; i < components.length; i++) {
-      let component = components[i];
-      // @ts-ignore
+      const component = components[i];
+      if (!(entry instanceof Directory)) {
+        break;
+      }
       if (entry.contents[component] != undefined) {
-        // @ts-ignore
         entry = entry.contents[component];
       } else {
-        //console.log("create", component);
+        debug.log("create", component);
         if (i == components.length - 1 && !is_dir) {
-          // @ts-ignore
           entry.contents[component] = new File(new ArrayBuffer(0));
         } else {
-          // @ts-ignore
           entry.contents[component] = new Directory({});
         }
-        // @ts-ignore
         entry = entry.contents[component];
       }
     }
+
     return entry;
   }
 }

@@ -20,12 +20,16 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
 <body>
 <div id="terminal"></div>
 <div id="downloads"></div>
+<p id="note">
+  Note: the panic at the end is expected. This demo highlights how far `rustc` can get on this polyfill before failing due to other reasons.
+</p>
 <script type="module">
     import { Fd } from "../dist/fd.js";
     import { File, Directory } from "../dist/fs_core.js";
     import { PreopenDirectory } from "../dist/fs_fd.js";
-    import WASI from "../dist/wasi.js";
+    import { WASI } from "../dist/index.js";
     import { strace } from "../dist/strace.js"
+
 
     var term = new Terminal({
         convertEol: true,
@@ -124,7 +128,7 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
             }),
         ];
 
-        let w = new WASI(args, env, fds);
+        let w = new WASI(args, env, fds, { debug: true });
 
         let inst = await WebAssembly.instantiate(wasm, {
             "wasi_snapshot_preview1": strace(w.wasiImport, ["fd_prestat_get"]),

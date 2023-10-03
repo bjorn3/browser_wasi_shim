@@ -122,7 +122,7 @@ export class Iovec {
   buf_len: number;
 
   static read_bytes(view: DataView, ptr: number): Iovec {
-    let iovec = new Iovec();
+    const iovec = new Iovec();
     iovec.buf = view.getUint32(ptr, true);
     iovec.buf_len = view.getUint32(ptr + 4, true);
     return iovec;
@@ -133,7 +133,7 @@ export class Iovec {
     ptr: number,
     len: number,
   ): Array<Iovec> {
-    let iovecs = [];
+    const iovecs = [];
     for (let i = 0; i < len; i++) {
       iovecs.push(Iovec.read_bytes(view, ptr + 8 * i));
     }
@@ -146,7 +146,7 @@ export class Ciovec {
   buf_len: number;
 
   static read_bytes(view: DataView, ptr: number): Ciovec {
-    let iovec = new Ciovec();
+    const iovec = new Ciovec();
     iovec.buf = view.getUint32(ptr, true);
     iovec.buf_len = view.getUint32(ptr + 4, true);
     return iovec;
@@ -157,7 +157,7 @@ export class Ciovec {
     ptr: number,
     len: number,
   ): Array<Ciovec> {
-    let iovecs = [];
+    const iovecs = [];
     for (let i = 0; i < len; i++) {
       iovecs.push(Ciovec.read_bytes(view, ptr + 8 * i));
     }
@@ -178,11 +178,6 @@ export const FILETYPE_SOCKET_DGRAM = 5;
 export const FILETYPE_SOCKET_STREAM = 6;
 export const FILETYPE_SYMBOLIC_LINK = 7;
 
-declare var TextEncoder: {
-  prototype: TextEncoder;
-  new (encoding?: string): TextEncoder;
-};
-
 export class Dirent {
   d_next: bigint;
   d_ino: bigint = 1n;
@@ -191,7 +186,7 @@ export class Dirent {
   dir_name: Uint8Array;
 
   constructor(next_cookie: bigint, name: string, type: number) {
-    let encoded_name = new TextEncoder("utf-8").encode(name);
+    const encoded_name = new TextEncoder().encode(name);
 
     this.d_next = next_cookie;
     this.d_namlen = encoded_name.byteLength;
@@ -208,9 +203,7 @@ export class Dirent {
   }
 
   write_head_bytes(view: DataView, ptr: number) {
-    // @ts-ignore
     view.setBigUint64(ptr, this.d_next, true);
-    // @ts-ignore
     view.setBigUint64(ptr + 8, this.d_ino, true);
     view.setUint32(ptr + 16, this.dir_name.length, true); // d_namlen
     view.setUint8(ptr + 20, this.d_type);
@@ -251,9 +244,7 @@ export class Fdstat {
   write_bytes(view: DataView, ptr: number) {
     view.setUint8(ptr, this.fs_filetype);
     view.setUint16(ptr + 2, this.fs_flags, true);
-    // @ts-ignore
     view.setBigUint64(ptr + 8, this.fs_rights_base, true);
-    // @ts-ignore
     view.setBigUint64(ptr + 16, this.fs_rights_inherited, true);
   }
 }
@@ -284,20 +275,13 @@ export class Filestat {
   }
 
   write_bytes(view: DataView, ptr: number) {
-    // @ts-ignore
     view.setBigUint64(ptr, this.dev, true);
-    // @ts-ignore
     view.setBigUint64(ptr + 8, this.ino, true);
     view.setUint8(ptr + 16, this.filetype);
-    // @ts-ignore
     view.setBigUint64(ptr + 24, this.nlink, true);
-    // @ts-ignore
     view.setBigUint64(ptr + 32, this.size, true);
-    // @ts-ignore
     view.setBigUint64(ptr + 38, this.atim, true);
-    // @ts-ignore
     view.setBigUint64(ptr + 46, this.mtim, true);
-    // @ts-ignore
     view.setBigUint64(ptr + 52, this.ctim, true);
   }
 }
@@ -369,7 +353,7 @@ export class Prestat {
   inner: PrestatDir;
 
   static dir(name_len: number): Prestat {
-    let prestat = new Prestat();
+    const prestat = new Prestat();
     prestat.tag = PREOPENTYPE_DIR;
     prestat.inner = new PrestatDir(name_len);
     return prestat;

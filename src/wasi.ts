@@ -1,25 +1,22 @@
 import * as wasi from "./wasi_defs.js";
 import { Fd } from "./fd.js";
+import { debug } from "./debug.js";
 
-type mixed = any;
-
-declare var TextEncoder: {
-  prototype: TextEncoder;
-  new (encoding?: string): TextEncoder;
-};
+export interface Options {
+  debug?: boolean;
+}
 
 export default class WASI {
   args: Array<string> = [];
   env: Array<string> = [];
   fds: Array<Fd> = [];
-  //@ts-ignore
   inst: { exports: { memory: WebAssembly.Memory } };
-  wasiImport: { [key: string]: (...args: Array<any>) => mixed };
+  wasiImport: { [key: string]: (...args: Array<unknown>) => unknown };
 
   /// Start a WASI command
   start(instance: {
     // FIXME v0.3: close opened Fds after execution
-    exports: { memory: WebAssembly.Memory; _start: () => mixed };
+    exports: { memory: WebAssembly.Memory; _start: () => unknown };
   }) {
     this.inst = instance;
     instance.exports._start();
@@ -27,77 +24,103 @@ export default class WASI {
 
   /// Initialize a WASI reactor
   initialize(instance: {
-    exports: { memory: WebAssembly.Memory; _initialize: () => mixed };
+    exports: { memory: WebAssembly.Memory; _initialize: () => unknown };
   }) {
     this.inst = instance;
     instance.exports._initialize();
   }
 
-  constructor(args: Array<string>, env: Array<string>, fds: Array<Fd>) {
+  constructor(
+    args: Array<string>,
+    env: Array<string>,
+    fds: Array<Fd>,
+    options: Options = {},
+  ) {
+    debug.enable(options.debug);
+
     this.args = args;
     this.env = env;
     this.fds = fds;
-    let self = this;
+    const self = this;
     this.wasiImport = {
       args_sizes_get(argc: number, argv_buf_size: number): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
         buffer.setUint32(argc, self.args.length, true);
         let buf_size = 0;
-        for (let arg of self.args) {
+        for (const arg of self.args) {
           buf_size += arg.length + 1;
         }
         buffer.setUint32(argv_buf_size, buf_size, true);
-        //console.log(buffer.getUint32(argc, true), buffer.getUint32(argv_buf_size, true));
+        debug.log(
+          buffer.getUint32(argc, true),
+          buffer.getUint32(argv_buf_size, true),
+        );
         return 0;
       },
       args_get(argv: number, argv_buf: number): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
-        let orig_argv_buf = argv_buf;
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const orig_argv_buf = argv_buf;
         for (let i = 0; i < self.args.length; i++) {
           buffer.setUint32(argv, argv_buf, true);
           argv += 4;
-          let arg = new TextEncoder("utf-8").encode(self.args[i]);
+          const arg = new TextEncoder().encode(self.args[i]);
           buffer8.set(arg, argv_buf);
           buffer.setUint8(argv_buf + arg.length, 0);
           argv_buf += arg.length + 1;
         }
-        //console.log(new TextDecoder("utf-8").decode(buffer8.slice(orig_argv_buf, argv_buf)));
+        if (debug.enabled) {
+          debug.log(
+            new TextDecoder("utf-8").decode(
+              buffer8.slice(orig_argv_buf, argv_buf),
+            ),
+          );
+        }
         return 0;
       },
 
       environ_sizes_get(environ_count: number, environ_size: number): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
         buffer.setUint32(environ_count, self.env.length, true);
         let buf_size = 0;
-        for (let environ of self.env) {
+        for (const environ of self.env) {
           buf_size += environ.length + 1;
         }
         buffer.setUint32(environ_size, buf_size, true);
-        //console.log(buffer.getUint32(environ_count, true), buffer.getUint32(environ_size, true));
+        debug.log(
+          buffer.getUint32(environ_count, true),
+          buffer.getUint32(environ_size, true),
+        );
         return 0;
       },
       environ_get(environ: number, environ_buf: number): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
-        let orig_environ_buf = environ_buf;
-        for (let i = 0; i < env.length; i++) {
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const orig_environ_buf = environ_buf;
+        for (let i = 0; i < self.env.length; i++) {
           buffer.setUint32(environ, environ_buf, true);
           environ += 4;
-          let e = new TextEncoder("utf-8").encode(env[i]);
+          const e = new TextEncoder().encode(self.env[i]);
           buffer8.set(e, environ_buf);
           buffer.setUint8(environ_buf + e.length, 0);
           environ_buf += e.length + 1;
         }
-        //console.log(new TextDecoder("utf-8").decode(buffer8.slice(orig_environ_buf, environ_buf)));
+        if (debug.enabled) {
+          debug.log(
+            new TextDecoder("utf-8").decode(
+              buffer8.slice(orig_environ_buf, environ_buf),
+            ),
+          );
+        }
         return 0;
       },
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       clock_res_get(id: number, res_ptr: number): number {
         throw "unimplemented";
       },
       clock_time_get(id: number, precision: bigint, time: number): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
         if (id === wasi.CLOCKID_REALTIME) {
           buffer.setBigUint64(
             time,
@@ -142,8 +165,7 @@ export default class WASI {
       },
       fd_close(fd: number): number {
         if (self.fds[fd] != undefined) {
-          let ret = self.fds[fd].fd_close();
-          // @ts-ignore
+          const ret = self.fds[fd].fd_close();
           self.fds[fd] = undefined;
           return ret;
         } else {
@@ -159,7 +181,7 @@ export default class WASI {
       },
       fd_fdstat_get(fd: number, fdstat_ptr: number): number {
         if (self.fds[fd] != undefined) {
-          let { ret, fdstat } = self.fds[fd].fd_fdstat_get();
+          const { ret, fdstat } = self.fds[fd].fd_fdstat_get();
           if (fdstat != null) {
             fdstat.write_bytes(
               new DataView(self.inst.exports.memory.buffer),
@@ -194,7 +216,7 @@ export default class WASI {
       },
       fd_filestat_get(fd: number, filestat_ptr: number): number {
         if (self.fds[fd] != undefined) {
-          let { ret, filestat } = self.fds[fd].fd_filestat_get();
+          const { ret, filestat } = self.fds[fd].fd_filestat_get();
           if (filestat != null) {
             filestat.write_bytes(
               new DataView(self.inst.exports.memory.buffer),
@@ -232,11 +254,15 @@ export default class WASI {
         offset: bigint,
         nread_ptr: number,
       ): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let iovecs = wasi.Iovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
-          let { ret, nread } = self.fds[fd].fd_pread(buffer8, iovecs, offset);
+          const iovecs = wasi.Iovec.read_bytes_array(
+            buffer,
+            iovs_ptr,
+            iovs_len,
+          );
+          const { ret, nread } = self.fds[fd].fd_pread(buffer8, iovecs, offset);
           buffer.setUint32(nread_ptr, nread, true);
           return ret;
         } else {
@@ -244,9 +270,9 @@ export default class WASI {
         }
       },
       fd_prestat_get(fd: number, buf_ptr: number): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let { ret, prestat } = self.fds[fd].fd_prestat_get();
+          const { ret, prestat } = self.fds[fd].fd_prestat_get();
           if (prestat != null) {
             prestat.write_bytes(buffer, buf_ptr);
           }
@@ -255,17 +281,18 @@ export default class WASI {
           return wasi.ERRNO_BADF;
         }
       },
+
       fd_prestat_dir_name(
         fd: number,
         path_ptr: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         path_len: number,
       ): number {
         // FIXME don't ignore path_len
         if (self.fds[fd] != undefined) {
-          // @ts-ignore
-          let { ret, prestat_dir_name } = self.fds[fd].fd_prestat_dir_name();
+          const { ret, prestat_dir_name } = self.fds[fd].fd_prestat_dir_name();
           if (prestat_dir_name != null) {
-            let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+            const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
             buffer8.set(prestat_dir_name, path_ptr);
           }
           return ret;
@@ -280,11 +307,15 @@ export default class WASI {
         offset: bigint,
         nwritten_ptr: number,
       ): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let iovecs = wasi.Ciovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
-          let { ret, nwritten } = self.fds[fd].fd_pwrite(
+          const iovecs = wasi.Ciovec.read_bytes_array(
+            buffer,
+            iovs_ptr,
+            iovs_len,
+          );
+          const { ret, nwritten } = self.fds[fd].fd_pwrite(
             buffer8,
             iovecs,
             offset,
@@ -301,11 +332,15 @@ export default class WASI {
         iovs_len: number,
         nread_ptr: number,
       ): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let iovecs = wasi.Iovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
-          let { ret, nread } = self.fds[fd].fd_read(buffer8, iovecs);
+          const iovecs = wasi.Iovec.read_bytes_array(
+            buffer,
+            iovs_ptr,
+            iovs_len,
+          );
+          const { ret, nread } = self.fds[fd].fd_read(buffer8, iovecs);
           buffer.setUint32(nread_ptr, nread, true);
           return ret;
         } else {
@@ -319,13 +354,14 @@ export default class WASI {
         cookie: bigint,
         bufused_ptr: number,
       ): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
           let bufused = 0;
 
+          // eslint-disable-next-line no-constant-condition
           while (true) {
-            let { ret, dirent } = self.fds[fd].fd_readdir_single(cookie);
+            const { ret, dirent } = self.fds[fd].fd_readdir_single(cookie);
             if (ret != 0) {
               buffer.setUint32(bufused_ptr, bufused, true);
               return ret;
@@ -339,7 +375,7 @@ export default class WASI {
               break;
             }
 
-            let head_bytes = new ArrayBuffer(dirent.head_length());
+            const head_bytes = new ArrayBuffer(dirent.head_length());
             dirent.write_head_bytes(new DataView(head_bytes), 0);
             buffer8.set(
               new Uint8Array(head_bytes).slice(
@@ -371,7 +407,7 @@ export default class WASI {
       },
       fd_renumber(fd: number, to: number) {
         if (self.fds[fd] != undefined && self.fds[to] != undefined) {
-          let ret = self.fds[to].fd_close();
+          const ret = self.fds[to].fd_close();
           if (ret != 0) {
             return ret;
           }
@@ -388,9 +424,9 @@ export default class WASI {
         whence: number,
         offset_out_ptr: number,
       ): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let { ret, offset: offset_out } = self.fds[fd].fd_seek(
+          const { ret, offset: offset_out } = self.fds[fd].fd_seek(
             offset,
             whence,
           );
@@ -408,9 +444,9 @@ export default class WASI {
         }
       },
       fd_tell(fd: number, offset_ptr: number): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let { ret, offset } = self.fds[fd].fd_tell();
+          const { ret, offset } = self.fds[fd].fd_tell();
           buffer.setBigUint64(offset_ptr, offset, true);
           return ret;
         } else {
@@ -423,11 +459,15 @@ export default class WASI {
         iovs_len: number,
         nwritten_ptr: number,
       ): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let iovecs = wasi.Ciovec.read_bytes_array(buffer, iovs_ptr, iovs_len);
-          let { ret, nwritten } = self.fds[fd].fd_write(buffer8, iovecs);
+          const iovecs = wasi.Ciovec.read_bytes_array(
+            buffer,
+            iovs_ptr,
+            iovs_len,
+          );
+          const { ret, nwritten } = self.fds[fd].fd_write(buffer8, iovecs);
           buffer.setUint32(nwritten_ptr, nwritten, true);
           return ret;
         } else {
@@ -439,9 +479,9 @@ export default class WASI {
         path_ptr: number,
         path_len: number,
       ): number {
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let path = new TextDecoder("utf-8").decode(
+          const path = new TextDecoder("utf-8").decode(
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
           return self.fds[fd].path_create_directory(path);
@@ -454,13 +494,13 @@ export default class WASI {
         path_len: number,
         filestat_ptr: number,
       ): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let path = new TextDecoder("utf-8").decode(
+          const path = new TextDecoder("utf-8").decode(
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
-          let { ret, filestat } = self.fds[fd].path_filestat_get(flags, path);
+          const { ret, filestat } = self.fds[fd].path_filestat_get(flags, path);
           if (filestat != null) {
             filestat.write_bytes(buffer, filestat_ptr);
           }
@@ -478,9 +518,9 @@ export default class WASI {
         mtim,
         fst_flags,
       ) {
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let path = new TextDecoder("utf-8").decode(
+          const path = new TextDecoder("utf-8").decode(
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
           return self.fds[fd].path_filestat_set_times(
@@ -503,12 +543,12 @@ export default class WASI {
         new_path_ptr: number,
         new_path_len: number,
       ): number {
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[old_fd] != undefined && self.fds[new_fd] != undefined) {
-          let old_path = new TextDecoder("utf-8").decode(
+          const old_path = new TextDecoder("utf-8").decode(
             buffer8.slice(old_path_ptr, old_path_ptr + old_path_len),
           );
-          let new_path = new TextDecoder("utf-8").decode(
+          const new_path = new TextDecoder("utf-8").decode(
             buffer8.slice(new_path_ptr, new_path_ptr + new_path_len),
           );
           return self.fds[new_fd].path_link(
@@ -532,14 +572,14 @@ export default class WASI {
         fd_flags,
         opened_fd_ptr: number,
       ): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let path = new TextDecoder("utf-8").decode(
+          const path = new TextDecoder("utf-8").decode(
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
-          //console.log(path);
-          let { ret, fd_obj } = self.fds[fd].path_open(
+          debug.log(path);
+          const { ret, fd_obj } = self.fds[fd].path_open(
             dirflags,
             path,
             oflags,
@@ -552,7 +592,7 @@ export default class WASI {
           }
           // FIXME use first free fd
           self.fds.push(fd_obj);
-          let opened_fd = self.fds.length - 1;
+          const opened_fd = self.fds.length - 1;
           buffer.setUint32(opened_fd_ptr, opened_fd, true);
           return 0;
         } else {
@@ -567,14 +607,14 @@ export default class WASI {
         buf_len: number,
         nread_ptr: number,
       ): number {
-        let buffer = new DataView(self.inst.exports.memory.buffer);
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let path = new TextDecoder("utf-8").decode(
+          const path = new TextDecoder("utf-8").decode(
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
-          //console.log(path);
-          let { ret, data } = self.fds[fd].path_readlink(path);
+          debug.log(path);
+          const { ret, data } = self.fds[fd].path_readlink(path);
           if (data != null) {
             if (data.length > buf_len) {
               buffer.setUint32(nread_ptr, 0, true);
@@ -593,9 +633,9 @@ export default class WASI {
         path_ptr: number,
         path_len: number,
       ): number {
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let path = new TextDecoder("utf-8").decode(
+          const path = new TextDecoder("utf-8").decode(
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
           return self.fds[fd].path_remove_directory(path);
@@ -604,11 +644,17 @@ export default class WASI {
         }
       },
       path_rename(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         fd: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         old_path_ptr: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         old_path_len: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         new_fd: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         new_path_ptr: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         new_path_len: number,
       ): number {
         throw "FIXME what is the best abstraction for this?";
@@ -620,12 +666,12 @@ export default class WASI {
         new_path_ptr: number,
         new_path_len: number,
       ): number {
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let old_path = new TextDecoder("utf-8").decode(
+          const old_path = new TextDecoder("utf-8").decode(
             buffer8.slice(old_path_ptr, old_path_ptr + old_path_len),
           );
-          let new_path = new TextDecoder("utf-8").decode(
+          const new_path = new TextDecoder("utf-8").decode(
             buffer8.slice(new_path_ptr, new_path_ptr + new_path_len),
           );
           return self.fds[fd].path_symlink(old_path, new_path);
@@ -634,9 +680,9 @@ export default class WASI {
         }
       },
       path_unlink_file(fd: number, path_ptr: number, path_len: number): number {
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
-          let path = new TextDecoder("utf-8").decode(
+          const path = new TextDecoder("utf-8").decode(
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
           return self.fds[fd].path_unlink_file(path);
@@ -644,6 +690,7 @@ export default class WASI {
           return wasi.ERRNO_BADF;
         }
       },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       poll_oneoff(in_, out, nsubscriptions) {
         throw "async io not supported";
       },
@@ -655,20 +702,24 @@ export default class WASI {
       },
       sched_yield() {},
       random_get(buf: number, buf_len: number) {
-        let buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         for (let i = 0; i < buf_len; i++) {
           buffer8[buf + i] = (Math.random() * 256) | 0;
         }
       },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       sock_recv(fd: number, ri_data, ri_flags) {
         throw "sockets not supported";
       },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       sock_send(fd: number, si_data, si_flags) {
         throw "sockets not supported";
       },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       sock_shutdown(fd: number, how) {
         throw "sockets not supported";
       },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       sock_accept(fd: number, flags) {
         throw "sockets not supported";
       },

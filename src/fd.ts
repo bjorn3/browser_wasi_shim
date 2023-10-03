@@ -1,3 +1,4 @@
+/* eslint @typescript-eslint/no-unused-vars:0 */
 import * as wasi from "./wasi_defs.js";
 
 export class Fd {
@@ -40,7 +41,7 @@ export class Fd {
   fd_prestat_get() {
     return { ret: -1, prestat: null };
   }
-  fd_prestat_dir_name(path_ptr: number, path_len: number) {
+  fd_prestat_dir_name() {
     return { ret: -1, prestat_dir_name: null };
   }
   fd_pwrite(view8: Uint8Array, iovs: Array<wasi.Ciovec>, offset: bigint) {
