@@ -1,11 +1,7 @@
 import * as wasi from "./wasi_defs.js";
 
 export class Fd {
-  fd_advise(
-    offset: bigint,
-    len: bigint,
-    advice: number
-  ): number {
+  fd_advise(offset: bigint, len: bigint, advice: number): number {
     return -1;
   }
   fd_allocate(offset: bigint, len: bigint): number {
@@ -25,7 +21,7 @@ export class Fd {
   }
   fd_fdstat_set_rights(
     fs_rights_base: bigint,
-    fs_rights_inheriting: bigint
+    fs_rights_inheriting: bigint,
   ): number {
     return -1;
   }
@@ -52,7 +48,7 @@ export class Fd {
   }
   fd_read(
     view8: Uint8Array,
-    iovs: Array<wasi.Iovec>
+    iovs: Array<wasi.Iovec>,
   ): { ret: number; nread: number } {
     return { ret: -1, nread: 0 };
   }
@@ -92,7 +88,7 @@ export class Fd {
     oflags,
     fs_rights_base,
     fs_rights_inheriting,
-    fdflags
+    fdflags,
   ) {
     return { ret: -1, fd_obj: null };
   }

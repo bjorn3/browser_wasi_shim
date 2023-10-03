@@ -131,7 +131,7 @@ export class Iovec {
   static read_bytes_array(
     view: DataView,
     ptr: number,
-    len: number
+    len: number,
   ): Array<Iovec> {
     let iovecs = [];
     for (let i = 0; i < len; i++) {
@@ -155,7 +155,7 @@ export class Ciovec {
   static read_bytes_array(
     view: DataView,
     ptr: number,
-    len: number
+    len: number,
   ): Array<Ciovec> {
     let iovecs = [];
     for (let i = 0; i < len; i++) {
@@ -217,7 +217,10 @@ export class Dirent {
   }
 
   write_name_bytes(view8: Uint8Array, ptr: number, buf_len: number) {
-    view8.set(this.dir_name.slice(0, Math.min(this.dir_name.byteLength, buf_len)), ptr);
+    view8.set(
+      this.dir_name.slice(0, Math.min(this.dir_name.byteLength, buf_len)),
+      ptr,
+    );
   }
 }
 

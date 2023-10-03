@@ -1,5 +1,10 @@
 import * as wasi from "./wasi_defs.js";
-import { File, Directory, SyncOPFSFile, FileSystemSyncAccessHandle } from "./fs_core.js";
+import {
+  File,
+  Directory,
+  SyncOPFSFile,
+  FileSystemSyncAccessHandle,
+} from "./fs_core.js";
 import { Fd } from "./fd.js";
 
 declare var TextEncoder: {
@@ -22,7 +27,7 @@ export class OpenFile extends Fd {
 
   fd_read(
     view8: Uint8Array,
-    iovs: Array<wasi.Iovec>
+    iovs: Array<wasi.Iovec>,
   ): { ret: number; nread: number } {
     let nread = 0;
     for (let iovec of iovs) {
@@ -31,7 +36,7 @@ export class OpenFile extends Fd {
         let slice = this.file.data.slice(
           Number(this.file_pos),
           // @ts-ignore
-          Number(this.file_pos + BigInt(iovec.buf_len))
+          Number(this.file_pos + BigInt(iovec.buf_len)),
         );
         view8.set(slice, iovec.buf);
         // @ts-ignore
@@ -75,7 +80,7 @@ export class OpenFile extends Fd {
 
   fd_write(
     view8: Uint8Array,
-    iovs: Array<wasi.Ciovec>
+    iovs: Array<wasi.Ciovec>,
   ): { ret: number; nwritten: number } {
     let nwritten = 0;
     if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten };
@@ -84,13 +89,13 @@ export class OpenFile extends Fd {
       if (this.file_pos + BigInt(buffer.byteLength) > this.file.size) {
         let old = this.file.data;
         this.file.data = new Uint8Array(
-          Number(this.file_pos + BigInt(buffer.byteLength))
+          Number(this.file_pos + BigInt(buffer.byteLength)),
         );
         this.file.data.set(old);
       }
       this.file.data.set(
         buffer.slice(0, Number(this.file.size - this.file_pos)),
-        Number(this.file_pos)
+        Number(this.file_pos),
       );
       this.file_pos += BigInt(buffer.byteLength);
       nwritten += iovec.buf_len;
@@ -110,17 +115,26 @@ export class OpenSyncOPFSFile extends Fd {
   constructor(file: SyncOPFSFile) {
     super();
     this.file = file;
-  };
+  }
 
   fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
     return { ret: 0, fdstat: new wasi.Fdstat(wasi.FILETYPE_REGULAR_FILE, 0) };
   }
 
   fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
-    return { ret: 0, filestat: new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, BigInt(this.file.handle.getSize())) };
+    return {
+      ret: 0,
+      filestat: new wasi.Filestat(
+        wasi.FILETYPE_REGULAR_FILE,
+        BigInt(this.file.handle.getSize()),
+      ),
+    };
   }
 
-  fd_read(view8: Uint8Array, iovs: Array<wasi.Iovec>): { ret: number, nread: number } {
+  fd_read(
+    view8: Uint8Array,
+    iovs: Array<wasi.Iovec>,
+  ): { ret: number; nread: number } {
     let nread = 0;
     for (let iovec of iovs) {
       if (this.position < this.file.handle.getSize()) {
@@ -135,7 +149,10 @@ export class OpenSyncOPFSFile extends Fd {
     return { ret: 0, nread };
   }
 
-  fd_seek(offset: number | bigint, whence: number): { ret: number, offset: bigint } {
+  fd_seek(
+    offset: number | bigint,
+    whence: number,
+  ): { ret: number; offset: bigint } {
     let calculated_offset: bigint;
     switch (whence) {
       case wasi.WHENCE_SET:
@@ -157,7 +174,10 @@ export class OpenSyncOPFSFile extends Fd {
     return { ret: wasi.ERRNO_SUCCESS, offset: this.position };
   }
 
-  fd_write(view8: Uint8Array, iovs: Array<wasi.Iovec>): { ret: number, nwritten: number } {
+  fd_write(
+    view8: Uint8Array,
+    iovs: Array<wasi.Iovec>,
+  ): { ret: number; nwritten: number } {
     let nwritten = 0;
     if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten };
     for (let iovec of iovs) {
@@ -182,7 +202,6 @@ export class OpenSyncOPFSFile extends Fd {
   fd_close(): number {
     return wasi.ERRNO_SUCCESS;
   }
-
 }
 
 export class OpenDirectory extends Fd {
@@ -220,7 +239,7 @@ export class OpenDirectory extends Fd {
 
   path_filestat_get(
     flags: number,
-    path: string
+    path: string,
   ): { ret: number; filestat: wasi.Filestat | null } {
     let entry = this.dir.get_entry_for_path(path);
     if (entry == null) {
@@ -235,13 +254,16 @@ export class OpenDirectory extends Fd {
     oflags: number,
     fs_rights_base: bigint,
     fs_rights_inheriting: bigint,
-    fd_flags: number
+    fd_flags: number,
   ): { ret: number; fd_obj: Fd | null } {
     let entry = this.dir.get_entry_for_path(path);
     if (entry == null) {
       if ((oflags & wasi.OFLAGS_CREAT) == wasi.OFLAGS_CREAT) {
         // doesn't exist, but shall be created
-        entry = this.dir.create_entry_for_path(path, (oflags & wasi.OFLAGS_DIRECTORY) == wasi.OFLAGS_DIRECTORY);
+        entry = this.dir.create_entry_for_path(
+          path,
+          (oflags & wasi.OFLAGS_DIRECTORY) == wasi.OFLAGS_DIRECTORY,
+        );
       } else {
         // doesn't exist, no such file
         return { ret: wasi.ERRNO_NOENT, fd_obj: null };
@@ -257,33 +279,44 @@ export class OpenDirectory extends Fd {
       // file is actually a directory
       return { ret: wasi.ERRNO_ISDIR, fd_obj: null };
     }
-    if (entry.readonly &&
-      (fs_rights_base & BigInt(wasi.RIGHTS_FD_WRITE)) == BigInt(wasi.RIGHTS_FD_WRITE)
+    if (
+      entry.readonly &&
+      (fs_rights_base & BigInt(wasi.RIGHTS_FD_WRITE)) ==
+        BigInt(wasi.RIGHTS_FD_WRITE)
     ) {
       // no write permission to file
       return { ret: wasi.ERRNO_PERM, fd_obj: null };
     }
     if (
-      (!(entry instanceof Directory)) &&
+      !(entry instanceof Directory) &&
       (oflags & wasi.OFLAGS_TRUNC) == wasi.OFLAGS_TRUNC
     ) {
       // truncate existing file first
       let ret = entry.truncate();
-      if (ret != wasi.ERRNO_SUCCESS)
-        return { ret, fd_obj: null };
+      if (ret != wasi.ERRNO_SUCCESS) return { ret, fd_obj: null };
     }
     return { ret: wasi.ERRNO_SUCCESS, fd_obj: entry.open(fd_flags) };
   }
 
   path_create_directory(path: string): number {
-    return this.path_open(0, path, wasi.OFLAGS_CREAT | wasi.OFLAGS_DIRECTORY, 0n, 0n, 0).ret;
+    return this.path_open(
+      0,
+      path,
+      wasi.OFLAGS_CREAT | wasi.OFLAGS_DIRECTORY,
+      0n,
+      0n,
+      0,
+    ).ret;
   }
 }
 
 export class PreopenDirectory extends OpenDirectory {
   prestat_name: Uint8Array;
 
-  constructor(name: string, contents: { [key: string]: File | Directory | SyncOPFSFile }) {
+  constructor(
+    name: string,
+    contents: { [key: string]: File | Directory | SyncOPFSFile },
+  ) {
     super(new Directory(contents));
     this.prestat_name = new TextEncoder("utf-8").encode(name);
   }

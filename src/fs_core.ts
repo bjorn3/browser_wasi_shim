@@ -10,7 +10,10 @@ export class File {
   data: Uint8Array;
   readonly: boolean;
 
-  constructor(data: ArrayBuffer | SharedArrayBuffer | Uint8Array | Array<number>, options?: FileOptions) {
+  constructor(
+    data: ArrayBuffer | SharedArrayBuffer | Uint8Array | Array<number>,
+    options?: FileOptions,
+  ) {
     this.data = new Uint8Array(data);
     this.readonly = !!options?.readonly;
   }
@@ -44,7 +47,10 @@ export interface FileSystemSyncAccessHandle {
   getSize(): number;
   read(buffer: ArrayBuffer | ArrayBufferView, options?: { at: number }): number;
   truncate(to: number): void;
-  write(buffer: ArrayBuffer | ArrayBufferView, options?: { at: number }): number;
+  write(
+    buffer: ArrayBuffer | ArrayBufferView,
+    options?: { at: number },
+  ): number;
 }
 
 // Synchronous access to an individual file in the origin private file system.
@@ -78,7 +84,6 @@ export class SyncOPFSFile {
     this.handle.truncate(0);
     return wasi.ERRNO_SUCCESS;
   }
-
 }
 
 export class Directory {
@@ -129,7 +134,7 @@ export class Directory {
         entry = entry.contents[component];
       } else {
         //console.log("create", component);
-        if ((i == components.length - 1) && !is_dir) {
+        if (i == components.length - 1 && !is_dir) {
           // @ts-ignore
           entry.contents[component] = new File(new ArrayBuffer(0));
         } else {
