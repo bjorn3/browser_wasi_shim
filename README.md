@@ -31,6 +31,30 @@ let inst = await WebAssembly.instantiate(wasm, {
 wasi.start(inst);
 ```
 
+## Building
+
+```
+$ npm install
+$ npm run build
+```
+
+## Running the demo
+
+The demo requires the wasm rustc artifacts and the xterm js package. To get them run:
+
+```
+$ git submodule update --init
+$ cd examples && npm install
+```
+
+Run the demo with a static web server from the root of this project:
+
+```
+$ npx http-server
+```
+
+And visit [http://127.0.0.1:8080/examples/rustc.html]() in your browser.
+
 ## License
 
 Licensed under either of
