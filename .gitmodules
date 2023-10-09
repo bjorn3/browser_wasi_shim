@@ -1,0 +1,3 @@
+[submodule "examples/wasm-rustc"]
+	path = examples/wasm-rustc
+	url = git@github.com:bjorn3/wasm-rustc.git
