@@ -38,6 +38,22 @@ $ npm install
 $ npm run build
 ```
 
+## Running tests
+
+This project uses playwright to run tests in a browser using WebAssembly built from the Wasmtime project.
+
+To clone wasmtime and build the test WebAssembly, run:
+
+```
+$ npm test:build
+```
+
+Once the WebAssembly is built, you can run the tests with:
+
+```
+$ npm test
+```
+
 ## Running the demo
 
 The demo requires the wasm rustc artifacts and the xterm js package. To get them run:

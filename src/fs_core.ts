@@ -19,8 +19,8 @@ export class File {
     this.readonly = !!options?.readonly;
   }
 
-  open(fd_flags: number) {
-    const file = new OpenFile(this);
+  open(fd_flags: number, fs_rights_base: bigint) {
+    const file = new OpenFile(this, fs_rights_base);
     if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
     return file;
   }
@@ -66,8 +66,8 @@ export class SyncOPFSFile {
     this.readonly = !!options?.readonly;
   }
 
-  open(fd_flags: number) {
-    const file = new OpenSyncOPFSFile(this);
+  open(fd_flags: number, fs_rights_base: bigint) {
+    const file = new OpenSyncOPFSFile(this, fs_rights_base);
     if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
     return file;
   }
@@ -115,7 +115,7 @@ export class Directory {
       if (entry.contents[component] != undefined) {
         entry = entry.contents[component];
       } else {
-        debug.log(component);
+        debug.log(`component ${component} undefined`);
         return null;
       }
     }

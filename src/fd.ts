@@ -38,10 +38,13 @@ export class Fd {
   fd_pread(view8: Uint8Array, iovs: Array<wasi.Iovec>, offset: bigint) {
     return { ret: -1, nread: 0 };
   }
-  fd_prestat_get() {
+  fd_prestat_get(): {
+    ret: number;
+    prestat: wasi.Prestat | null;
+  } {
     return { ret: -1, prestat: null };
   }
-  fd_prestat_dir_name() {
+  fd_prestat_dir_name(): { ret: number; prestat_dir_name: Uint8Array | null } {
     return { ret: -1, prestat_dir_name: null };
   }
   fd_pwrite(view8: Uint8Array, iovs: Array<wasi.Ciovec>, offset: bigint) {
@@ -74,7 +77,10 @@ export class Fd {
   path_create_directory(path): number {
     return -1;
   }
-  path_filestat_get(flags, path) {
+  path_filestat_get(
+    flags,
+    path,
+  ): { ret: number; filestat: wasi.Filestat | null } {
     return { ret: -1, filestat: null };
   }
   path_filestat_set_times(flags, path, atim, mtim, fst_flags) {
@@ -84,16 +90,16 @@ export class Fd {
     return -1;
   }
   path_open(
-    dirflags,
-    path,
-    oflags,
-    fs_rights_base,
-    fs_rights_inheriting,
-    fdflags,
-  ) {
+    dirflags: number,
+    path: string,
+    oflags: number,
+    fs_rights_base: bigint,
+    fs_rights_inheriting: bigint,
+    fd_flags: number,
+  ): { ret: number; fd_obj: Fd | null } {
     return { ret: -1, fd_obj: null };
   }
-  path_readlink(path) {
+  path_readlink(path): { ret: -1; data: Uint8Array | null } {
     return { ret: -1, data: null };
   }
   path_remove_directory(path): number {
