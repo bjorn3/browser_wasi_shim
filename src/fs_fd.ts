@@ -227,7 +227,7 @@ export class OpenDirectory extends Fd {
   ): { ret: number; filestat: wasi.Filestat | null } {
     const entry = this.dir.get_entry_for_path(path);
     if (entry == null) {
-      return { ret: wasi.ERRNO_EXIST, filestat: null };
+      return { ret: wasi.ERRNO_NOENT, filestat: null };
     }
     return { ret: 0, filestat: entry.stat() };
   }
