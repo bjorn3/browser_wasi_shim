@@ -37,6 +37,28 @@ export class OpenFile extends Fd {
     return { ret: 0, nread };
   }
 
+  fd_pread(
+    view8: Uint8Array,
+    iovs: Array<wasi.Iovec>,
+    offset: bigint,
+  ): { ret: number; nread: number } {
+    let nread = 0;
+    for (const iovec of iovs) {
+      if (offset < this.file.data.byteLength) {
+        const slice = this.file.data.slice(
+          Number(offset),
+          Number(offset + BigInt(iovec.buf_len)),
+        );
+        view8.set(slice, iovec.buf);
+        offset += BigInt(slice.length);
+        nread += slice.length;
+      } else {
+        break;
+      }
+    }
+    return { ret: 0, nread };
+  }
+
   fd_seek(offset: bigint, whence: number): { ret: number; offset: bigint } {
     let calculated_offset: bigint;
     switch (whence) {
