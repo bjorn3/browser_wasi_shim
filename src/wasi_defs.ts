@@ -128,12 +128,8 @@ export class Iovec {
     return iovec;
   }
 
-  static read_bytes_array(
-    view: DataView,
-    ptr: number,
-    len: number,
-  ): Array<Iovec> {
-    const iovecs = [];
+  static read_bytes_array(view: DataView, ptr: number, len: number): Iovec[] {
+    const iovecs: Iovec[] = [];
     for (let i = 0; i < len; i++) {
       iovecs.push(Iovec.read_bytes(view, ptr + 8 * i));
     }
@@ -157,7 +153,7 @@ export class Ciovec {
     ptr: number,
     len: number,
   ): Array<Ciovec> {
-    const iovecs = [];
+    const iovecs: Ciovec[] = [];
     for (let i = 0; i < len; i++) {
       iovecs.push(Ciovec.read_bytes(view, ptr + 8 * i));
     }
@@ -236,9 +232,10 @@ export class Fdstat {
   fs_rights_base: bigint = 0n;
   fs_rights_inherited: bigint = 0n;
 
-  constructor(filetype: number, flags: number) {
+  constructor(filetype: number, flags: number, fs_rights_base = 0n) {
     this.fs_filetype = filetype;
     this.fs_flags = flags;
+    this.fs_rights_base = fs_rights_base;
   }
 
   write_bytes(view: DataView, ptr: number) {
@@ -363,4 +360,157 @@ export class Prestat {
     view.setUint32(ptr, this.tag, true);
     this.inner.write_bytes(view, ptr + 4);
   }
+}
+
+export interface WasiPreview1 {
+  args_sizes_get(argc: number, argv_buf_size: number): number;
+  args_get(argv: number, argv_buf: number): number;
+
+  environ_sizes_get(environ_count: number, environ_size: number): number;
+  environ_get(environ: number, environ_buf: number): number;
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  clock_res_get(id: number, res_ptr: number): number;
+  clock_time_get(id: number, precision: bigint, time: number): number;
+
+  fd_advise(fd: number, offset: bigint, len: bigint, advice: number): number;
+  fd_allocate(fd: number, offset: bigint, len: bigint): number;
+  fd_close(fd: number): number;
+  fd_datasync(fd: number): number;
+  fd_fdstat_get(fd: number, fdstat_ptr: number): number;
+  fd_fdstat_set_flags(fd: number, flags: number): number;
+  fd_fdstat_set_rights(
+    fd: number,
+    fs_rights_base: bigint,
+    fs_rights_inheriting: bigint,
+  ): number;
+  fd_filestat_get(fd: number, filestat_ptr: number): number;
+  fd_filestat_set_size(fd: number, size: bigint): number;
+  fd_filestat_set_times(
+    fd: number,
+    atim: bigint,
+    mtim: bigint,
+    fst_flags: number,
+  ): number;
+  fd_pread(
+    fd: number,
+    iovs_ptr: number,
+    iovs_len: number,
+    offset: bigint,
+    nread_ptr: number,
+  ): number;
+  fd_prestat_get(fd: number, buf_ptr: number): number;
+
+  fd_prestat_dir_name(
+    fd: number,
+    path_ptr: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    path_len: number,
+  ): number;
+  fd_pwrite(
+    fd: number,
+    iovs_ptr: number,
+    iovs_len: number,
+    offset: bigint,
+    nwritten_ptr: number,
+  ): number;
+  fd_read(
+    fd: number,
+    iovs_ptr: number,
+    iovs_len: number,
+    nread_ptr: number,
+  ): number;
+  fd_readdir(
+    fd: number,
+    buf: number,
+    buf_len: number,
+    cookie: bigint,
+    bufused_ptr: number,
+  ): number;
+  fd_renumber(fd: number, to: number);
+  fd_seek(
+    fd: number,
+    offset: bigint,
+    whence: number,
+    offset_out_ptr: number,
+  ): number;
+  fd_sync(fd: number): number;
+  fd_tell(fd: number, offset_ptr: number): number;
+  fd_write(
+    fd: number,
+    iovs_ptr: number,
+    iovs_len: number,
+    nwritten_ptr: number,
+  ): number;
+  path_create_directory(fd: number, path_ptr: number, path_len: number): number;
+  path_filestat_get(
+    fd: number,
+    flags: number,
+    path_ptr: number,
+    path_len: number,
+    filestat_ptr: number,
+  ): number;
+  path_filestat_set_times(
+    fd: number,
+    flags: number,
+    path_ptr: number,
+    path_len: number,
+    atim,
+    mtim,
+    fst_flags,
+  );
+  path_link(
+    old_fd: number,
+    old_flags,
+    old_path_ptr: number,
+    old_path_len: number,
+    new_fd: number,
+    new_path_ptr: number,
+    new_path_len: number,
+  ): number;
+  path_open(
+    fd: number,
+    dirflags,
+    path_ptr: number,
+    path_len: number,
+    oflags,
+    fs_rights_base,
+    fs_rights_inheriting,
+    fd_flags,
+    opened_fd_ptr: number,
+  ): number;
+  path_readlink(
+    fd: number,
+    path_ptr: number,
+    path_len: number,
+    buf_ptr: number,
+    buf_len: number,
+    nread_ptr: number,
+  ): number;
+  path_remove_directory(fd: number, path_ptr: number, path_len: number): number;
+  path_rename(
+    fd: number,
+    old_path_ptr: number,
+    old_path_len: number,
+    new_fd: number,
+    new_path_ptr: number,
+    new_path_len: number,
+  ): number;
+  path_symlink(
+    old_path_ptr: number,
+    old_path_len: number,
+    fd: number,
+    new_path_ptr: number,
+    new_path_len: number,
+  ): number;
+  path_unlink_file(fd: number, path_ptr: number, path_len: number): number;
+  poll_oneoff(in_, out, nsubscriptions);
+  proc_exit(exit_code: number);
+  proc_raise(sig: number);
+  sched_yield();
+  random_get(buf: number, buf_len: number);
+  sock_recv(fd: number, ri_data, ri_flags);
+  sock_send(fd: number, si_data, si_flags);
+  sock_shutdown(fd: number, how);
+  sock_accept(fd: number, flags);
 }

@@ -7,11 +7,11 @@ export interface Options {
 }
 
 export default class WASI {
-  args: Array<string> = [];
-  env: Array<string> = [];
-  fds: Array<Fd> = [];
+  args: string[] = [];
+  env: string[] = [];
+  fds: (Fd | undefined)[] = [];
   inst: { exports: { memory: WebAssembly.Memory } };
-  wasiImport: { [key: string]: (...args: Array<unknown>) => unknown };
+  wasiImport: wasi.WasiPreview1;
 
   /// Start a WASI command
   start(instance: {
@@ -19,6 +19,7 @@ export default class WASI {
     exports: { memory: WebAssembly.Memory; _start: () => unknown };
   }) {
     this.inst = instance;
+    debug.log("calling _start");
     instance.exports._start();
   }
 
@@ -27,16 +28,22 @@ export default class WASI {
     exports: { memory: WebAssembly.Memory; _initialize: () => unknown };
   }) {
     this.inst = instance;
-    instance.exports._initialize();
+    if (instance.exports._initialize) {
+      debug.log("calling _initialize");
+      instance.exports._initialize();
+    } else {
+      debug.log("no _initialize found");
+    }
   }
 
   constructor(
-    args: Array<string>,
-    env: Array<string>,
-    fds: Array<Fd>,
+    args: string[] = [],
+    env: string[] = [],
+    fds: Fd[] = [],
     options: Options = {},
   ) {
     debug.enable(options.debug);
+    debug.log("initializing wasi", { args, env, fds });
 
     this.args = args;
     this.env = env;
@@ -485,6 +492,8 @@ export default class WASI {
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
           return self.fds[fd].path_create_directory(path);
+        } else {
+          return wasi.ERRNO_BADF;
         }
       },
       path_filestat_get(
@@ -578,7 +587,7 @@ export default class WASI {
           const path = new TextDecoder("utf-8").decode(
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
-          debug.log(path);
+          debug.log({ path });
           const { ret, fd_obj } = self.fds[fd].path_open(
             dirflags,
             path,
@@ -591,8 +600,9 @@ export default class WASI {
             return ret;
           }
           // FIXME use first free fd
-          self.fds.push(fd_obj);
+          self.fds.push(fd_obj!);
           const opened_fd = self.fds.length - 1;
+
           buffer.setUint32(opened_fd_ptr, opened_fd, true);
           return 0;
         } else {
@@ -613,7 +623,7 @@ export default class WASI {
           const path = new TextDecoder("utf-8").decode(
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
-          debug.log(path);
+          debug.log({ path });
           const { ret, data } = self.fds[fd].path_readlink(path);
           if (data != null) {
             if (data.length > buf_len) {
