@@ -280,10 +280,10 @@ export class OpenDirectory extends Fd {
     }
     if (
       (oflags & wasi.OFLAGS_DIRECTORY) == wasi.OFLAGS_DIRECTORY &&
-      entry.stat().filetype != wasi.FILETYPE_DIRECTORY
+      entry.stat().filetype !== wasi.FILETYPE_DIRECTORY
     ) {
-      // file is actually a directory
-      return { ret: wasi.ERRNO_ISDIR, fd_obj: null };
+      // expected a directory but the file is not a directory
+      return { ret: wasi.ERRNO_NOTDIR, fd_obj: null };
     }
     if (
       entry.readonly &&
