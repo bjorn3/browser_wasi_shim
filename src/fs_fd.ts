@@ -3,6 +3,8 @@ import { File, Directory, SyncOPFSFile } from "./fs_core.js";
 import { Fd } from "./fd.js";
 import { debug } from "./debug.js";
 
+// let COUNTER = 0;
+
 export class OpenFile extends Fd {
   file: File;
   file_pos: bigint = 0n;
@@ -314,6 +316,72 @@ export class OpenDirectory extends Fd {
       0,
     ).ret;
   }
+
+  path_unlink_file(path: string): number {
+    console.log("start path_unlink_file");
+    const entry = this.dir.get_entry_for_path(path);
+    if (entry === null) {
+      return wasi.ERRNO_NOENT;
+    }
+    // const fs_rights_base = 0n;
+    // if (
+    //   entry.readonly ||
+    //   (fs_rights_base & BigInt(wasi.RIGHTS_PATH_UNLINK_FILE)) ==
+    //     BigInt(wasi.RIGHTS_PATH_UNLINK_FILE)
+    // ) {
+    //   // no write permission to file
+    //   return wasi.ERRNO_PERM;
+    // }
+    const entryStat = entry.stat();
+    console.log("entry: ", entry);
+    console.log("entry.stat(): ", entryStat);
+    console.log("entry.stat().filetype === wasi.FILETYPE_DIRECTORY? ", entry.stat().filetype === wasi.FILETYPE_DIRECTORY);
+    if (entry.stat().filetype === wasi.FILETYPE_DIRECTORY) {
+      // file is actually a directory
+      console.log("file is actually a directory");
+      return wasi.ERRNO_ISDIR;
+    }
+    delete this.dir.contents[path];
+    return wasi.ERRNO_SUCCESS;
+  }
+
+  path_remove_directory(path: string): number {
+    // COUNTER++;
+    // if (COUNTER > 20) {
+    //   return -1;
+    // }
+    console.log("start path_remove_directory");
+    const entry = this.dir.get_entry_for_path(path);
+    if (entry === null) {
+      return wasi.ERRNO_NOENT;
+    }
+    if (!(entry instanceof Directory) || (entry.stat().filetype !== wasi.FILETYPE_DIRECTORY)) {
+      console.log("file is not a directory. Entry: ", entry);
+      return wasi.ERRNO_NOTDIR;
+    }
+    const entryD = entry as Directory;
+    if (Object.keys(entryD.contents).length !== 0) {
+      console.log("directory not empty");
+      return wasi.ERRNO_NOTEMPTY;
+    }
+
+    // const fs_rights_base = 0n;
+    // if (
+    //   entry.readonly ||
+    //   (fs_rights_base & BigInt(wasi.RIGHTS_PATH_REMOVE_DIRECTORY)) ==
+    //     BigInt(wasi.RIGHTS_PATH_REMOVE_DIRECTORY)
+    // ) {
+    //   // no write permission to file
+    //   return wasi.ERRNO_PERM;
+    // }
+    const entryStat = entry.stat();
+    console.log("entry: ", entry);
+    console.log("entry.stat(): ", entryStat);
+    console.log("entry.stat().filetype === wasi.FILETYPE_DIRECTORY? ", entry.stat().filetype === wasi.FILETYPE_DIRECTORY);
+    delete this.dir.contents[path];
+    return wasi.ERRNO_SUCCESS;
+  }
+
 }
 
 export class PreopenDirectory extends OpenDirectory {
