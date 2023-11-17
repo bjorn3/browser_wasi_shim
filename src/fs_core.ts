@@ -122,7 +122,9 @@ export class Directory {
     return entry;
   }
 
-  get_parent_dir_for_path(path: string): File | Directory | SyncOPFSFile | null {
+  get_parent_dir_for_path(
+    path: string,
+  ): File | Directory | SyncOPFSFile | null {
     let entry: File | Directory | SyncOPFSFile = this;
     let parentEntry = entry;
     for (const component of path.split("/")) {
