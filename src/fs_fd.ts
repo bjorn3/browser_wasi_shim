@@ -3,7 +3,7 @@ import { File, Directory, SyncOPFSFile } from "./fs_core.js";
 import { Fd } from "./fd.js";
 import { debug } from "./debug.js";
 
-// let COUNTER = 0;
+let COUNTER = 0;
 
 export class OpenFile extends Fd {
   file: File;
@@ -319,7 +319,12 @@ export class OpenDirectory extends Fd {
 
   path_unlink_file(path: string): number {
     console.log("start path_unlink_file");
+    console.log("file contents before removing ", this.dir.contents)
+    const parentDirEntry = this.dir.get_parent_dir_for_path(path);
+    const pathComponents = path.split("/");
+    const fileName = pathComponents[pathComponents.length - 1];
     const entry = this.dir.get_entry_for_path(path);
+    console.log("Entry ", parentDirEntry, " Entry stat ", parentDirEntry.stat())
     if (entry === null) {
       return wasi.ERRNO_NOENT;
     }
@@ -332,26 +337,58 @@ export class OpenDirectory extends Fd {
     //   // no write permission to file
     //   return wasi.ERRNO_PERM;
     // }
-    const entryStat = entry.stat();
-    console.log("entry: ", entry);
-    console.log("entry.stat(): ", entryStat);
-    console.log("entry.stat().filetype === wasi.FILETYPE_DIRECTORY? ", entry.stat().filetype === wasi.FILETYPE_DIRECTORY);
+    // const entryStat = entry.stat();
+    // console.log("entry: ", entry);
+    // console.log("entry.stat(): ", entryStat);
+    // console.log("entry.stat().filetype === wasi.FILETYPE_DIRECTORY? ", entry.stat().filetype === wasi.FILETYPE_DIRECTORY);
     if (entry.stat().filetype === wasi.FILETYPE_DIRECTORY) {
       // file is actually a directory
       console.log("file is actually a directory");
       return wasi.ERRNO_ISDIR;
     }
-    delete this.dir.contents[path];
+    delete (parentDirEntry as Directory).contents[fileName];
+    console.log("file deleted successfully. File: ", path, " fs contents are: ", this.dir.contents);
+    console.log("end path_unlink_file");
+    
     return wasi.ERRNO_SUCCESS;
+
+
+  // const components = path.split("/").filter((component) => component !== "/");
+
+  // for (let i = 0; i < components.length; i++) {
+  //   const component = components[i];
+
+  //   if (!(entry instanceof Directory) || entry.contents[component] === undefined) {
+  //     // File or directory does not exist
+  //     console.log("File or directory not found:", path);
+  //     return;
+  //   }
+
+  //   if (i === components.length - 1) {
+  //     // Last component in the path
+  //     delete entry.contents[component];
+  //     console.log("Deleted:", path);
+  //   } else {
+  //     entry = entry.contents[component];
+  //   }
+  // }
   }
 
   path_remove_directory(path: string): number {
-    // COUNTER++;
-    // if (COUNTER > 20) {
-    //   return -1;
-    // }
     console.log("start path_remove_directory");
+
+    console.log("dir contents before removing ", this.dir.contents);
+    
+    COUNTER++;
+    if (COUNTER > 20) {
+      return -1;
+    }
+
+    const parentDirEntry = this.dir.get_parent_dir_for_path(path);
+    const pathComponents = path.split("/");
+    const fileName = pathComponents[pathComponents.length - 1];
     const entry = this.dir.get_entry_for_path(path);
+
     if (entry === null) {
       return wasi.ERRNO_NOENT;
     }
@@ -374,11 +411,14 @@ export class OpenDirectory extends Fd {
     //   // no write permission to file
     //   return wasi.ERRNO_PERM;
     // }
-    const entryStat = entry.stat();
-    console.log("entry: ", entry);
-    console.log("entry.stat(): ", entryStat);
-    console.log("entry.stat().filetype === wasi.FILETYPE_DIRECTORY? ", entry.stat().filetype === wasi.FILETYPE_DIRECTORY);
-    delete this.dir.contents[path];
+    // const entryStat = entry.stat();
+    // console.log("entry: ", entry);
+    // console.log("entry.stat(): ", entryStat);
+    // console.log("entry.stat().filetype === wasi.FILETYPE_DIRECTORY? ", entry.stat().filetype === wasi.FILETYPE_DIRECTORY);
+    delete (parentDirEntry as Directory).contents[fileName];
+    console.log("deleted directory: ", path, " fs contents are: ", this.dir.contents);
+    console.log("end path_remove_directory");
+    
     return wasi.ERRNO_SUCCESS;
   }
 
