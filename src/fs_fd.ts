@@ -316,6 +316,7 @@ export class OpenDirectory extends Fd {
   }
 
   path_unlink_file(path: string): number {
+    path = this.clean_path(path);
     const parentDirEntry = this.dir.get_parent_dir_for_path(path);
     const pathComponents = path.split("/");
     const fileName = pathComponents[pathComponents.length - 1];
@@ -324,17 +325,18 @@ export class OpenDirectory extends Fd {
       return wasi.ERRNO_NOENT;
     }
     if (entry.stat().filetype === wasi.FILETYPE_DIRECTORY) {
-      console.log("file is actually a directory");
       return wasi.ERRNO_ISDIR;
     }
-    delete (parentDirEntry as Directory).contents[fileName];
+    delete parentDirEntry.contents[fileName];
     return wasi.ERRNO_SUCCESS;
   }
 
   path_remove_directory(path: string): number {
+    path = this.clean_path(path);
     const parentDirEntry = this.dir.get_parent_dir_for_path(path);
     const pathComponents = path.split("/");
     const fileName = pathComponents[pathComponents.length - 1];
+
     const entry = this.dir.get_entry_for_path(path);
 
     if (entry === null) {
@@ -344,16 +346,23 @@ export class OpenDirectory extends Fd {
       !(entry instanceof Directory) ||
       entry.stat().filetype !== wasi.FILETYPE_DIRECTORY
     ) {
-      console.log("file is not a directory. Entry: ", entry);
       return wasi.ERRNO_NOTDIR;
     }
-    const entryD = entry as Directory;
-    if (Object.keys(entryD.contents).length !== 0) {
-      console.log("directory not empty");
+    if (Object.keys(entry.contents).length !== 0) {
       return wasi.ERRNO_NOTEMPTY;
     }
-    delete (parentDirEntry as Directory).contents[fileName];
+    if (parentDirEntry.contents[fileName] === undefined) {
+      return wasi.ERRNO_NOENT;
+    }
+    delete parentDirEntry.contents[fileName];
     return wasi.ERRNO_SUCCESS;
+  }
+
+  clean_path(path: string): string {
+    while (path.length > 0 && path[path.length - 1] === "/") {
+      path = path.slice(0, path.length - 1);
+    }
+    return path;
   }
 }
 
