@@ -15,20 +15,25 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
     body {
         margin: 0;
     }
+    p {
+        margin: 10px;
+    }
 </style>
 </head>
 <body>
 <div id="terminal"></div>
 <div id="downloads"></div>
 <p id="note">
-  Note: the panic at the end is expected. This demo highlights how far `rustc` can get on this polyfill before failing due to other reasons.
+  Note: the failure to invoke the linker at the end is expected.
+  WASI doesn't have a way to invoke external processes and rustc doesn't have a builtin linker.
+  This demo highlights how far `rustc` can get on this polyfill before failing due to other reasons.
 </p>
 <script type="module">
     import { Fd } from "../dist/fd.js";
     import { File, Directory } from "../dist/fs_core.js";
     import { PreopenDirectory } from "../dist/fs_fd.js";
     import { WASI } from "../dist/index.js";
-    import { strace } from "../dist/strace.js"
+    import { strace } from "../dist/strace.js";
 
 
     var term = new Terminal({
@@ -86,34 +91,34 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
                             "lib": new Directory(await (async function () {
                                 let dir = {};
                                 for (let file of [
-                                    "libaddr2line-60dea794f80c3ef4.rlib",
-                                    "libadler-d65038594e8cfab3.rlib",
-                                    "liballoc-0de515ba820cdcfa.rlib",
-                                    "libcfg_if-3714295220178beb.rlib",
-                                    "libcompiler_builtins-7deb5fdc76bc68b0.rlib",
-                                    "libcore-1ba018e205a91c17.rlib",
-                                    "libgetopts-f8b396edfb838e11.rlib",
-                                    "libgimli-b7851eb24fb241ab.rlib",
-                                    "libhashbrown-c62361fbb728cc4b.rlib",
-                                    "liblibc-273011445e6504c2.rlib",
-                                    "libmemchr-b587b3bc8d98b4b8.rlib",
-                                    "libminiz_oxide-2d239bf53ecd5d89.rlib",
-                                    "libobject-7b62e7dc54fb7cd7.rlib",
-                                    "libpanic_abort-f0b7506e2ba2830d.rlib",
-                                    "libpanic_unwind-1b641924c3354893.rlib",
-                                    "libproc_macro-e663e39f4c73449c.rlib",
-                                    "librustc_demangle-be7b16a50397ed9c.rlib",
-                                    "librustc_std_workspace_alloc-c0347e439fe1bd8a.rlib",
-                                    "librustc_std_workspace_core-04b73f4c30e9e1dd.rlib",
-                                    "librustc_std_workspace_std-f4bb462fd2254ada.rlib",
-                                    "libstd-21ea728213f8218b.rlib",
-                                    "libstd-21ea728213f8218b.so",
-                                    "libstd_detect-2f7c6cdb3add68c0.rlib",
-                                    "libsysroot-58b33ba40d3a21e1.rlib",
-                                    "libtest-5715830a776353f9.rlib",
-                                    "libtest-5715830a776353f9.so",
-                                    "libunicode_width-5ae0afd9a72d6422.rlib",
-                                    "libunwind-d6ab645e2fcde9a0.rlib",
+                                    "libaddr2line-3368a2ecf632bfc6.rlib",
+                                    "libadler-16845f650eeea12c.rlib",
+                                    "liballoc-359908cdc7960fbe.rlib",
+                                    "libcfg_if-7473f3420f2605c3.rlib",
+                                    "libcompiler_builtins-71ea7cc1bc898fb7.rlib",
+                                    "libcore-4b8e8a815d049db3.rlib",
+                                    "libgetopts-f44aac795000338f.rlib",
+                                    "libgimli-803608e8717daecb.rlib",
+                                    "libhashbrown-78466a7e64363027.rlib",
+                                    "liblibc-5175310f1f21926c.rlib",
+                                    "libmemchr-c435600275d2183b.rlib",
+                                    "libminiz_oxide-d34599dcae36be0e.rlib",
+                                    "libobject-95dcb95966ee8da6.rlib",
+                                    "libpanic_abort-b427edf763e95e4b.rlib",
+                                    "libpanic_unwind-bc7d0e983bae92ba.rlib",
+                                    "libproc_macro-89b7ce531133f6b1.rlib",
+                                    "librustc_demangle-a99802d1dda40ccf.rlib",
+                                    "librustc_std_workspace_alloc-f8e02d7936a431a0.rlib",
+                                    "librustc_std_workspace_core-5d8a121daa7eeaa9.rlib",
+                                    "librustc_std_workspace_std-f27d08c53ac7abc6.rlib",
+                                    "libstd-7b943f62dbb7006a.rlib",
+                                    "libstd-7b943f62dbb7006a.so",
+                                    "libstd_detect-81d31c776664c1e1.rlib",
+                                    "libsysroot-34f36b5e8fe41707.rlib",
+                                    "libtest-f472878f82ea373c.rlib",
+                                    "libtest-f472878f82ea373c.so",
+                                    "libunicode_width-d55ce9c674fbd422.rlib",
+                                    "libunwind-8ca3e01a84805f9e.rlib"
                                 ]) {
                                     dir[file] = await load_external_file("/examples/wasm-rustc/lib/rustlib/x86_64-unknown-linux-gnu/lib/" + file);
                                 }
@@ -140,8 +145,8 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
 
         console.log(fds);
         console.log(fds[5].dir);
-        console.log(fds[5].dir.contents["hello.hello.7631c747841c2a99-cgu.0.rcgu.o"].data);
-        document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents["hello.hello.7631c747841c2a99-cgu.0.rcgu.o"].data], { type: "application/elf" })) + "'>Download object</a>";
+        console.log(fds[5].dir.contents["hello.hello.2490b9cce2492134-cgu.0.rcgu.o"].data);
+        document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents["hello.hello.2490b9cce2492134-cgu.0.rcgu.o"].data], { type: "application/elf" })) + "'>Download object</a>";
         document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents["hello.allocator_shim.rcgu.o"].data], { type: "application/elf" })) + "'>Download allocator shim</a>";
     })();
 </script>
