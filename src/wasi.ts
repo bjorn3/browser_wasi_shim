@@ -6,6 +6,15 @@ export interface Options {
   debug?: boolean;
 }
 
+/**
+ * An exception that is thrown when the process exits.
+ **/
+export class WASIProcExit extends Error {
+  constructor(public readonly code: number) {
+    super("exit with exit code " + code);
+  }
+}
+
 export default class WASI {
   args: Array<string> = [];
   env: Array<string> = [];
@@ -19,7 +28,15 @@ export default class WASI {
     exports: { memory: WebAssembly.Memory; _start: () => unknown };
   }) {
     this.inst = instance;
-    instance.exports._start();
+    try {
+      instance.exports._start();
+    } catch (e) {
+      if (e instanceof WASIProcExit) {
+        return e.code;
+      } else {
+        throw e;
+      }
+    }
   }
 
   /// Initialize a WASI reactor
@@ -695,7 +712,7 @@ export default class WASI {
         throw "async io not supported";
       },
       proc_exit(exit_code: number) {
-        throw "exit with exit code " + exit_code;
+        throw new WASIProcExit(exit_code);
       },
       proc_raise(sig: number) {
         throw "raised signal " + sig;
