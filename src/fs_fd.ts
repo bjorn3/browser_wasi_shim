@@ -83,6 +83,10 @@ export class OpenFile extends Fd {
     return { ret: 0, offset: this.file_pos };
   }
 
+  fd_tell(): { ret: number; offset: bigint } {
+    return { ret: 0, offset: this.file_pos };
+  }
+
   fd_write(
     view8: Uint8Array,
     iovs: Array<wasi.Ciovec>,
@@ -103,6 +107,28 @@ export class OpenFile extends Fd {
         Number(this.file_pos),
       );
       this.file_pos += BigInt(buffer.byteLength);
+      nwritten += iovec.buf_len;
+    }
+    return { ret: 0, nwritten };
+  }
+
+  fd_pwrite(view8: Uint8Array, iovs: Array<wasi.Ciovec>, offset: bigint) {
+    let nwritten = 0;
+    if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten };
+    for (const iovec of iovs) {
+      const buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
+      if (offset + BigInt(buffer.byteLength) > this.file.size) {
+        const old = this.file.data;
+        this.file.data = new Uint8Array(
+          Number(offset + BigInt(buffer.byteLength)),
+        );
+        this.file.data.set(old);
+      }
+      this.file.data.set(
+        buffer.slice(0, Number(this.file.size - offset)),
+        Number(offset),
+      );
+      offset += BigInt(buffer.byteLength);
       nwritten += iovec.buf_len;
     }
     return { ret: 0, nwritten };
