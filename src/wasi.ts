@@ -117,14 +117,32 @@ export default class WASI {
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       clock_res_get(id: number, res_ptr: number): number {
-        throw "unimplemented";
+        let resolutionValue: number;
+        switch (id) {
+          case wasi.CLOCKID_MONOTONIC: {
+            // https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
+            // > Resolution in isolated contexts: 5 microseconds
+            resolutionValue = 5_000; // 5 microseconds
+            break;
+          }
+          case wasi.CLOCKID_REALTIME: {
+            resolutionValue = 1_000_000; // 1 millisecond?
+            break;
+          }
+          default:
+            return wasi.ERRNO_NOSYS;
+        }
+        const view = new DataView(self.inst.exports.memory.buffer);
+        // 64-bit integer, but only the lower 32 bits are used.
+        view.setUint32(res_ptr, resolutionValue, true);
+        return wasi.ERRNO_SUCCESS;
       },
       clock_time_get(id: number, precision: bigint, time: number): number {
         const buffer = new DataView(self.inst.exports.memory.buffer);
         if (id === wasi.CLOCKID_REALTIME) {
           buffer.setBigUint64(
             time,
-            BigInt(new Date().getTime()) * 1000000n,
+            BigInt(new Date().getTime()) * 1_000_000n,
             true,
           );
         } else if (id == wasi.CLOCKID_MONOTONIC) {
