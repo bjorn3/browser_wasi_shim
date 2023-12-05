@@ -105,6 +105,10 @@ export class OpenFile extends Fd {
     return { ret: 0, offset: this.file_pos };
   }
 
+  fd_tell(): { ret: number; offset: bigint } {
+    return { ret: 0, offset: this.file_pos };
+  }
+
   fd_write(
     view8: Uint8Array,
     iovs: Array<wasi.Ciovec>,
