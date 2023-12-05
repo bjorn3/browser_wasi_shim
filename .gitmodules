@@ -1,3 +1,7 @@
 [submodule "examples/wasm-rustc"]
 	path = examples/wasm-rustc
 	url = git@github.com:bjorn3/wasm-rustc.git
+[submodule "test/wasi-testsuite"]
+	path = test/wasi-testsuite
+	url = https://github.com/WebAssembly/wasi-testsuite
+	branch = prod/testsuite-base
