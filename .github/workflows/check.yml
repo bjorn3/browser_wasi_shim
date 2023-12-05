@@ -14,4 +14,4 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: python3 -m pip install -r ./test/wasi-testsuite/test-runner/requirements.txt
-      - run: ./test/run-testsuite.sh
+      - run: npm test
