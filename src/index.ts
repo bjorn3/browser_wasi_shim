@@ -8,5 +8,6 @@ export {
   OpenDirectory,
   OpenSyncOPFSFile,
   PreopenDirectory,
+  Stdout,
 } from "./fs_fd.js";
 export { strace } from "./strace.js";

@@ -113,6 +113,29 @@ export class OpenFile extends Fd {
   }
 }
 
+/**
+ * A file that is opened as a standard output/error stream.
+ */
+export class Stdout extends Fd {
+  constructor() {
+    super();
+  }
+
+  fd_filestat_get() {
+    const filestat = new wasi.Filestat(
+      wasi.FILETYPE_CHARACTER_DEVICE,
+      BigInt(0),
+    );
+    return { ret: 0, filestat };
+  }
+
+  fd_fdstat_get() {
+    const fdstat = new wasi.Fdstat(wasi.FILETYPE_CHARACTER_DEVICE, 0);
+    fdstat.fs_rights_base = BigInt(wasi.RIGHTS_FD_WRITE);
+    return { ret: 0, fdstat };
+  }
+}
+
 export class OpenSyncOPFSFile extends Fd {
   file: SyncOPFSFile;
   position: bigint = 0n;
