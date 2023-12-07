@@ -10,3 +10,4 @@ export {
   PreopenDirectory,
 } from "./fs_fd.js";
 export { strace } from "./strace.js";
+export * as wasi from "./wasi_defs.js";
