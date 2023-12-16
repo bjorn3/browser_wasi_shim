@@ -30,6 +30,7 @@ export default class WASI {
     this.inst = instance;
     try {
       instance.exports._start();
+      return 0;
     } catch (e) {
       if (e instanceof WASIProcExit) {
         return e.code;
