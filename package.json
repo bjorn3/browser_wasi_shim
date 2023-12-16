@@ -7,7 +7,9 @@
   "scripts": {
     "build": "swc src -d dist && tsc --emitDeclarationOnly",
     "prepare": "swc src -d dist && tsc --emitDeclarationOnly",
-    "test": "./test/run-testsuite.sh",
+    "test:node": "./test/run-testsuite.sh node",
+    "test:browser": "playwright-core install && ./test/run-testsuite.sh browser",
+    "test": "npm run test:node && npm run test:browser",
     "check": "tsc --noEmit && prettier src -c && eslint src/"
   },
   "repository": {
