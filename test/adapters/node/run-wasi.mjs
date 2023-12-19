@@ -1,38 +1,9 @@
 #!/usr/bin/env node
 
 import fs from 'fs/promises';
-import path from 'path';
-import { WASI, wasi, strace, OpenFile, File, Directory, PreopenDirectory, Fd } from "../dist/index.js"
-
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const options = {
-    "version": false,
-    "test-file": null,
-    "arg": [],
-    "env": [],
-    "dir": [],
-  };
-  while (args.length > 0) {
-    const arg = args.shift();
-    if (arg.startsWith("--")) {
-      let [name, value] = arg.split("=");
-      name = name.slice(2);
-      if (Object.prototype.hasOwnProperty.call(options, name)) {
-        if (value === undefined) {
-          value = args.shift() || true;
-        }
-        if (Array.isArray(options[name])) {
-          options[name].push(value);
-        } else {
-          options[name] = value;
-        }
-      }
-    }
-  }
-
-  return options;
-}
+import { WASI, wasi, strace, OpenFile, File, Directory, PreopenDirectory, Fd } from "../../../dist/index.js"
+import { parseArgs } from "../shared/parseArgs.mjs"
+import { walkFs } from "../shared/walkFs.mjs"
 
 class NodeStdout extends Fd {
   constructor(out) {
@@ -65,26 +36,22 @@ class NodeStdout extends Fd {
   }
 }
 
-async function cloneToMemfs(dir) {
-  const destContents = {};
-  const srcContents = await fs.readdir(dir, { withFileTypes: true });
-  for (let entry of srcContents) {
-    const entryPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      destContents[entry.name] = new Directory(await cloneToMemfs(entryPath));
-    } else {
-      const buffer = await fs.readFile(entryPath);
-      const file = new File(buffer);
-      destContents[entry.name] = file;
-    }
-  }
-  return destContents;
-}
-
 async function derivePreopens(dirs) {
   const preopens = [];
   for (let dir of dirs) {
-    const contents = await cloneToMemfs(dir);
+    const contents = await walkFs(dir, (name, entry, out) => {
+      switch (entry.kind) {
+        case "dir":
+          entry = new Directory(entry.contents);
+          break;
+        case "file":
+          entry = new File(entry.buffer);
+          break;
+        default:
+          throw new Error(`Unexpected entry kind: ${entry.kind}`);
+      }
+      return { ...out, [name]: entry}
+    }, {})
     const preopen = new PreopenDirectory(dir, contents);
     preopens.push(preopen);
   }
@@ -123,7 +90,7 @@ async function runWASI(options) {
 async function main() {
   const options = parseArgs();
   if (options.version) {
-    const pkg = JSON.parse(await fs.readFile(new URL("../package.json", import.meta.url)));
+    const pkg = JSON.parse(await fs.readFile(new URL("../../../package.json", import.meta.url)));
     console.log(`${pkg.name} v${pkg.version}`);
     return;
   }

@@ -1,0 +1,1 @@
+../shared/adapter.py

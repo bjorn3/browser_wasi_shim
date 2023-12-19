@@ -1,0 +1,88 @@
+<html>
+<script type="module">
+    import { WASI, OpenFile, File, Fd, Directory, PreopenDirectory, wasi } from "/dist/index.js";
+    class ConsoleStdout extends Fd {
+        constructor(write) {
+            super();
+            this.write = write;
+        }
+
+        fd_filestat_get() {
+            const filestat = new wasi.Filestat(
+                wasi.FILETYPE_CHARACTER_DEVICE,
+                BigInt(0),
+            );
+            return { ret: 0, filestat };
+        }
+
+        fd_fdstat_get() {
+            const fdstat = new wasi.Fdstat(wasi.FILETYPE_CHARACTER_DEVICE, 0);
+            fdstat.fs_rights_base = BigInt(wasi.RIGHTS_FD_WRITE);
+            return { ret: 0, fdstat };
+        }
+
+        fd_write(view8, iovs) {
+            let nwritten = 0;
+            for (let iovec of iovs) {
+                let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
+                this.write(buffer);
+                nwritten += iovec.buf_len;
+            }
+            return { ret: 0, nwritten };
+        }
+    }
+
+    async function derivePreopens(dirs) {
+        const rawPreopens = await window.bindingDerivePreopens(dirs)
+        function transform(entry) {
+            if (entry.kind === "dir") {
+                const contents = {};
+                for (const [name, child] of Object.entries(entry.contents)) {
+                    contents[name] = transform(child);
+                }
+                return new Directory(contents);
+            } else if (entry.kind === "file") {
+                return new File(Uint8Array.from(entry.buffer))
+            } else {
+                throw new Error("Unknown kind: ", entry.kind, entry);
+            }
+        }
+        const preopens = []
+        for (const preopen of rawPreopens) {
+            const { dir, contents } = preopen;
+            const newContents = {};
+            for (const [name, child] of Object.entries(contents)) {
+                newContents[name] = transform(child);
+            }
+            preopens.push(new PreopenDirectory(dir, newContents));
+        }
+        return preopens;
+    }
+
+    window.runWASI = async (options) => {
+        const testFile = options["test-file"];
+        const args = [testFile].concat(options.arg);
+        const fds = [
+            new OpenFile(new File([])),
+            // Uint8Array is not [Serializable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify#description)
+            // so we need to convert it to an array before passing it to Playwright.
+            new ConsoleStdout(bytes => window.bindingWriteIO(Array.from(bytes), "stdout")),
+            new ConsoleStdout(bytes => window.bindingWriteIO(Array.from(bytes), "stderr")),
+        ];
+        const preopens = await derivePreopens(options.dir)
+        fds.push(...preopens);
+
+        const wasi = new WASI(args, options.env, fds, { debug: false });
+
+        const moduleBytes = await fetch(testFile).then(r => r.arrayBuffer());
+        const module = await WebAssembly.compile(moduleBytes);
+        const instance = await WebAssembly.instantiate(module, {
+            wasi_snapshot_preview1: wasi.wasiImport
+        });
+
+        const exitCode = wasi.start(instance);
+        return exitCode;
+    }
+</script>
+
+</html>
