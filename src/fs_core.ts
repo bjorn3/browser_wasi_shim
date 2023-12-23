@@ -431,7 +431,7 @@ export class OpenDirectory extends Fd {
 
   path_link(path_str: string, inode: Inode, allow_dir: boolean): number {
     const { ret: path_ret, path } = Path.from(path_str);
-    if (path_str == null) {
+    if (path == null) {
       return path_ret;
     }
 
@@ -487,7 +487,7 @@ export class OpenDirectory extends Fd {
 
   path_unlink(path_str: string): { ret: number; inode_obj: Inode | null } {
     const { ret: path_ret, path } = Path.from(path_str);
-    if (path_str == null) {
+    if (path == null) {
       return { ret: path_ret, inode_obj: null };
     }
 
