@@ -402,7 +402,7 @@ export class PreopenDirectory extends OpenDirectory {
     this.prestat_name = new TextEncoder().encode(name);
   }
 
-  fd_prestat_get(): { ret: number; prestat: wasi.Prestat } {
+  fd_prestat_get(): { ret: number; prestat: wasi.Prestat | null } {
     return {
       ret: 0,
       prestat: wasi.Prestat.dir(this.prestat_name.length),
