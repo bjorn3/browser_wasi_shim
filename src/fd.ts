@@ -1,7 +1,7 @@
 /* eslint @typescript-eslint/no-unused-vars:0 */
 import * as wasi from "./wasi_defs.js";
 
-export class Fd {
+export abstract class Fd {
   fd_advise(offset: bigint, len: bigint, advice: number): number {
     return wasi.ERRNO_NOTSUP;
   }
