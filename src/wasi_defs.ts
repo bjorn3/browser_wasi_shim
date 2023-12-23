@@ -184,7 +184,7 @@ export const FILETYPE_SYMBOLIC_LINK = 7;
 
 export class Dirent {
   d_next: bigint;
-  d_ino: bigint = 1n;
+  d_ino: bigint = 0n;
   d_namlen: number;
   d_type: number;
   dir_name: Uint8Array;

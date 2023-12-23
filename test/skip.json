@@ -27,10 +27,8 @@
     "poll_oneoff_stdio": "fail",
     "dangling_symlink": "fail",
     "dir_fd_op_failures": "fail",
-    "file_allocate": "fail",
     "nofollow_errors": "fail",
     "path_open_preopen": "fail",
-    "fd_readdir": "fail",
     "symlink_filestat": "fail",
     "symlink_loop": "fail"
   }

@@ -302,12 +302,25 @@ export class OpenDirectory extends Fd {
       debug.log("readdir_single", cookie);
       debug.log(cookie, this.dir.contents.keys());
     }
-    if (cookie >= BigInt(this.dir.contents.size)) {
+
+    if (cookie == 0n) {
+      return {
+        ret: wasi.ERRNO_SUCCESS,
+        dirent: new wasi.Dirent(1n, ".", wasi.FILETYPE_DIRECTORY),
+      };
+    } else if (cookie == 1n) {
+      return {
+        ret: wasi.ERRNO_SUCCESS,
+        dirent: new wasi.Dirent(2n, "..", wasi.FILETYPE_DIRECTORY),
+      };
+    }
+
+    if (cookie >= BigInt(this.dir.contents.size) + 2n) {
       return { ret: 0, dirent: null };
     }
 
     const [name, entry] = Array.from(this.dir.contents.entries())[
-      Number(cookie)
+      Number(cookie - 2n)
     ];
 
     return {
@@ -441,6 +454,10 @@ export class OpenDirectory extends Fd {
       return wasi.ERRNO_NOENT;
     }
     return wasi.ERRNO_SUCCESS;
+  }
+
+  fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
+    return { ret: 0, filestat: this.dir.stat() };
   }
 }
 
