@@ -20,6 +20,7 @@ export default class WASI {
   env: Array<string> = [];
   fds: Array<Fd> = [];
   inst: { exports: { memory: WebAssembly.Memory } };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   wasiImport: { [key: string]: (...args: Array<any>) => unknown };
 
   /// Start a WASI command
