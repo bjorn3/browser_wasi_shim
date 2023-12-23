@@ -39,7 +39,7 @@ export class Fd {
     view8: Uint8Array,
     iovs: Array<wasi.Iovec>,
     offset: bigint,
-  ): { ret: number, nread: number } {
+  ): { ret: number; nread: number } {
     return { ret: wasi.ERRNO_NOTSUP, nread: 0 };
   }
   fd_prestat_get(): { ret: number; prestat: wasi.Prestat | null } {
@@ -52,7 +52,7 @@ export class Fd {
     view8: Uint8Array,
     iovs: Array<wasi.Ciovec>,
     offset: bigint,
-  ): { ret: number, nwritten: number } {
+  ): { ret: number; nwritten: number } {
     return { ret: wasi.ERRNO_NOTSUP, nwritten: 0 };
   }
   fd_read(
@@ -76,19 +76,36 @@ export class Fd {
   fd_tell(): { ret: number; offset: bigint } {
     return { ret: wasi.ERRNO_NOTSUP, offset: 0n };
   }
-  fd_write(view8: Uint8Array, iovs: Array<wasi.Ciovec>): { ret: number; nwritten: number } {
+  fd_write(
+    view8: Uint8Array,
+    iovs: Array<wasi.Ciovec>,
+  ): { ret: number; nwritten: number } {
     return { ret: wasi.ERRNO_NOTSUP, nwritten: 0 };
   }
   path_create_directory(path: string): number {
     return wasi.ERRNO_NOTSUP;
   }
-  path_filestat_get(flags: number, path: string): { ret: number, filestat: wasi.Filestat | null } {
+  path_filestat_get(
+    flags: number,
+    path: string,
+  ): { ret: number; filestat: wasi.Filestat | null } {
     return { ret: wasi.ERRNO_NOTSUP, filestat: null };
   }
-  path_filestat_set_times(flags: number, path: string, atim: bigint, mtim: bigint, fst_flags: number): number {
+  path_filestat_set_times(
+    flags: number,
+    path: string,
+    atim: bigint,
+    mtim: bigint,
+    fst_flags: number,
+  ): number {
     return wasi.ERRNO_NOTSUP;
   }
-  path_link(old_fd: number, old_flags: number, old_path: string, new_path: string): number {
+  path_link(
+    old_fd: number,
+    old_flags: number,
+    old_path: string,
+    new_path: string,
+  ): number {
     return wasi.ERRNO_NOTSUP;
   }
   path_open(
@@ -101,7 +118,7 @@ export class Fd {
   ): { ret: number; fd_obj: Fd | null } {
     return { ret: wasi.ERRNO_NOTSUP, fd_obj: null };
   }
-  path_readlink(path: string): { ret: number, data: string | null } {
+  path_readlink(path: string): { ret: number; data: string | null } {
     return { ret: wasi.ERRNO_NOTSUP, data: null };
   }
   path_remove_directory(path: string): number {
