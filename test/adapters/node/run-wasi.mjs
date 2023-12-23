@@ -50,8 +50,9 @@ async function derivePreopens(dirs) {
         default:
           throw new Error(`Unexpected entry kind: ${entry.kind}`);
       }
-      return { ...out, [name]: entry}
-    }, {})
+      out.set(name, entry);
+      return out;
+    }, () => new Map())
     const preopen = new PreopenDirectory(dir, contents);
     preopens.push(preopen);
   }

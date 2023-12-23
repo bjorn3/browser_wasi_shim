@@ -6,9 +6,9 @@
         const rawPreopens = await window.bindingDerivePreopens(dirs)
         function transform(entry) {
             if (entry.kind === "dir") {
-                const contents = {};
+                const contents = new Map();
                 for (const [name, child] of Object.entries(entry.contents)) {
-                    contents[name] = transform(child);
+                    contents.set(name, transform(child));
                 }
                 return new Directory(contents);
             } else if (entry.kind === "file") {
@@ -20,9 +20,9 @@
         const preopens = []
         for (const preopen of rawPreopens) {
             const { dir, contents } = preopen;
-            const newContents = {};
+            const newContents = new Map();
             for (const [name, child] of Object.entries(contents)) {
-                newContents[name] = transform(child);
+                newContents.set(name, transform(child));
             }
             preopens.push(new PreopenDirectory(dir, newContents));
         }

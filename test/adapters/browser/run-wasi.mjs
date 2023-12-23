@@ -15,7 +15,7 @@ async function derivePreopens(dirs) {
         entry.buffer = Array.from(entry.buffer);
       }
       return { ...out, [name]: entry };
-    }, {});
+    }, () => {});
     preopens.push({ dir, contents });
   }
   return preopens;
@@ -24,8 +24,8 @@ async function derivePreopens(dirs) {
 /**
  * Configure routes for the browser harness.
  *
- * @param {import('playwright').BrowserContext} context 
- * @param {string} harnessURL 
+ * @param {import('playwright').BrowserContext} context
+ * @param {string} harnessURL
  */
 async function configureRoutes(context, harnessURL) {
 

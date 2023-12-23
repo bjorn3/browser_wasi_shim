@@ -299,15 +299,15 @@ export class OpenDirectory extends Fd {
   } {
     if (debug.enabled) {
       debug.log("readdir_single", cookie);
-      debug.log(cookie, Object.keys(this.dir.contents));
+      debug.log(cookie, this.dir.contents.keys());
     }
-    debug.log(cookie, Object.keys(this.dir.contents).slice(Number(cookie)));
-    if (cookie >= BigInt(Object.keys(this.dir.contents).length)) {
+    if (cookie >= BigInt(this.dir.contents.size)) {
       return { ret: 0, dirent: null };
     }
 
-    const name = Object.keys(this.dir.contents)[Number(cookie)];
-    const entry = this.dir.contents[name];
+    const [name, entry] = Array.from(this.dir.contents.entries())[
+      Number(cookie)
+    ];
 
     return {
       ret: 0,
@@ -399,7 +399,7 @@ export class OpenDirectory extends Fd {
     if (entry.stat().filetype === wasi.FILETYPE_DIRECTORY) {
       return wasi.ERRNO_ISDIR;
     }
-    delete parentDirEntry.contents[fileName];
+    parentDirEntry.contents.delete(fileName);
     return wasi.ERRNO_SUCCESS;
   }
 
@@ -420,13 +420,12 @@ export class OpenDirectory extends Fd {
     ) {
       return wasi.ERRNO_NOTDIR;
     }
-    if (Object.keys(entry.contents).length !== 0) {
+    if (entry.contents.size !== 0) {
       return wasi.ERRNO_NOTEMPTY;
     }
-    if (parentDirEntry.contents[fileName] === undefined) {
+    if (!parentDirEntry.contents.delete(fileName)) {
       return wasi.ERRNO_NOENT;
     }
-    delete parentDirEntry.contents[fileName];
     return wasi.ERRNO_SUCCESS;
   }
 
@@ -443,7 +442,7 @@ export class PreopenDirectory extends OpenDirectory {
 
   constructor(
     name: string,
-    contents: { [key: string]: File | Directory | SyncOPFSFile },
+    contents: Map<string, File | Directory | SyncOPFSFile>,
   ) {
     super(new Directory(contents));
     this.prestat_name = new TextEncoder().encode(name);
@@ -550,11 +549,19 @@ export class SyncOPFSFile {
 }
 
 export class Directory {
-  contents: { [key: string]: File | Directory | SyncOPFSFile };
+  contents: Map<string, File | Directory | SyncOPFSFile>;
   readonly = false; // FIXME implement, like marking all files within readonly?
 
-  constructor(contents: { [key: string]: File | Directory | SyncOPFSFile }) {
-    this.contents = contents;
+  constructor(
+    contents:
+      | Map<string, File | Directory | SyncOPFSFile>
+      | [string, File | Directory | SyncOPFSFile][],
+  ) {
+    if (contents instanceof Array) {
+      this.contents = new Map(contents);
+    } else {
+      this.contents = contents;
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -574,8 +581,9 @@ export class Directory {
       if (!(entry instanceof Directory)) {
         return null;
       }
-      if (entry.contents[component] != undefined) {
-        entry = entry.contents[component];
+      const child = entry.contents.get(component);
+      if (child !== undefined) {
+        entry = child;
       } else {
         debug.log(component);
         return null;
@@ -595,12 +603,13 @@ export class Directory {
         debug.log(entry);
         return null;
       }
-      if (entry.contents[component] === undefined) {
+      const child = entry.contents.get(component);
+      if (child === undefined) {
         debug.log(component);
         return null;
       }
       parentEntry = entry;
-      entry = entry.contents[component];
+      entry = child;
     }
     return parentEntry;
   }
@@ -619,16 +628,19 @@ export class Directory {
       if (!(entry instanceof Directory)) {
         break;
       }
-      if (entry.contents[component] != undefined) {
-        entry = entry.contents[component];
+      const child = entry.contents.get(component);
+      if (child !== undefined) {
+        entry = child;
       } else {
         debug.log("create", component);
+        let new_child;
         if (i == components.length - 1 && !is_dir) {
-          entry.contents[component] = new File(new ArrayBuffer(0));
+          new_child = new File(new ArrayBuffer(0));
         } else {
-          entry.contents[component] = new Directory({});
+          new_child = new Directory(new Map());
         }
-        entry = entry.contents[component];
+        entry.contents.set(component, new_child);
+        entry = new_child;
       }
     }
 

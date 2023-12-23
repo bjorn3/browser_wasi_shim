@@ -6,12 +6,12 @@ import path from 'path';
  * using the given reducer function.
  *
  * @typedef {{ kind: "dir", contents: any } | { kind: "file", buffer: Buffer }} Entry
- * @param {string} dir 
+ * @param {string} dir
  * @param {(name: string, entry: Entry, out: any) => any} nextPartialResult
- * @param {any} initial
+ * @param {() => any} initial
  */
 export async function walkFs(dir, nextPartialResult, initial) {
-  let result = { ...initial }
+  let result = initial();
   const srcContents = await fs.readdir(dir, { withFileTypes: true });
   for (let entry of srcContents) {
     const entryPath = path.join(dir, entry.name);

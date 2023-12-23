@@ -75,16 +75,16 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
             new XtermStdio(term),
             new XtermStdio(term),
             new XtermStdio(term),
-            new PreopenDirectory("/tmp", {}),
-            new PreopenDirectory("/sysroot", {
-                "lib": new Directory({
-                    "rustlib": new Directory({
-                        "wasm32-wasi": new Directory({
-                            "lib": new Directory({}),
-                        }),
-                        "x86_64-unknown-linux-gnu": new Directory({
-                            "lib": new Directory(await (async function () {
-                                let dir = {};
+            new PreopenDirectory("/tmp", []),
+            new PreopenDirectory("/sysroot", [
+                ["lib", new Directory([
+                    ["rustlib", new Directory([
+                        ["wasm32-wasi", new Directory([
+                            ["lib", new Directory([])],
+                        ])],
+                        ["x86_64-unknown-linux-gnu", new Directory([
+                            ["lib", new Directory(await (async function () {
+                                let dir = new Map();
                                 for (let file of [
                                     "libaddr2line-3368a2ecf632bfc6.rlib",
                                     "libadler-16845f650eeea12c.rlib",
@@ -115,17 +115,17 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
                                     "libunicode_width-d55ce9c674fbd422.rlib",
                                     "libunwind-8ca3e01a84805f9e.rlib"
                                 ]) {
-                                    dir[file] = await load_external_file("/examples/wasm-rustc/lib/rustlib/x86_64-unknown-linux-gnu/lib/" + file);
+                                    dir.set(file, await load_external_file("/examples/wasm-rustc/lib/rustlib/x86_64-unknown-linux-gnu/lib/" + file));
                                 }
                                 return dir;
-                            })()),
-                        }),
-                    }),
-                }),
-            }),
-            new PreopenDirectory("/", {
-                "hello.rs": new File(new TextEncoder("utf-8").encode(`fn main() { println!("Hello World!"); }`)),
-            }),
+                            })())],
+                        ])],
+                    ])],
+                ])],
+            ]),
+            new PreopenDirectory("/", [
+                ["hello.rs", new File(new TextEncoder("utf-8").encode(`fn main() { println!("Hello World!"); }`))],
+            ]),
         ];
 
         let w = new WASI(args, env, fds, { debug: true });
@@ -140,9 +140,9 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
 
         console.log(fds);
         console.log(fds[5].dir);
-        console.log(fds[5].dir.contents["hello.hello.2490b9cce2492134-cgu.0.rcgu.o"].data);
-        document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents["hello.hello.2490b9cce2492134-cgu.0.rcgu.o"].data], { type: "application/elf" })) + "'>Download object</a>";
-        document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents["hello.allocator_shim.rcgu.o"].data], { type: "application/elf" })) + "'>Download allocator shim</a>";
+        console.log(fds[5].dir.contents.get("hello.hello.2490b9cce2492134-cgu.0.rcgu.o").data);
+        document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents.get("hello.hello.2490b9cce2492134-cgu.0.rcgu.o").data], { type: "application/elf" })) + "'>Download object</a>";
+        document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents.get("hello.allocator_shim.rcgu.o").data], { type: "application/elf" })) + "'>Download allocator shim</a>";
     })();
 </script>
 </body>
