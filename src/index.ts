@@ -2,6 +2,7 @@ import WASI, { WASIProcExit } from "./wasi.js";
 export { WASI, WASIProcExit };
 
 export { Fd } from "./fd.js";
+export { Inode } from "./inode.js";
 export {
   File,
   SyncOPFSFile,

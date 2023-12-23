@@ -1,6 +1,7 @@
 import { debug } from "./debug.js";
 import * as wasi from "./wasi_defs.js";
 import { Fd } from "./fd.js";
+import { Inode } from "./inode.js";
 
 export class OpenFile extends Fd {
   file: File;
@@ -373,7 +374,7 @@ export class OpenDirectory extends Fd {
       const ret = entry.truncate();
       if (ret != wasi.ERRNO_SUCCESS) return { ret, fd_obj: null };
     }
-    return { ret: wasi.ERRNO_SUCCESS, fd_obj: entry.open(fd_flags) };
+    return entry.path_open(fd_flags);
   }
 
   path_create_directory(path: string): number {
@@ -440,10 +441,7 @@ export class OpenDirectory extends Fd {
 export class PreopenDirectory extends OpenDirectory {
   prestat_name: Uint8Array;
 
-  constructor(
-    name: string,
-    contents: Map<string, File | Directory | SyncOPFSFile>,
-  ) {
+  constructor(name: string, contents: Map<string, Inode>) {
     super(new Directory(contents));
     this.prestat_name = new TextEncoder().encode(name);
   }
@@ -468,7 +466,7 @@ type FileOptions = Partial<{
   readonly: boolean;
 }>;
 
-export class File {
+export class File extends Inode {
   data: Uint8Array;
   readonly: boolean;
 
@@ -476,14 +474,15 @@ export class File {
     data: ArrayBuffer | SharedArrayBuffer | Uint8Array | Array<number>,
     options?: FileOptions,
   ) {
+    super();
     this.data = new Uint8Array(data);
     this.readonly = !!options?.readonly;
   }
 
-  open(fd_flags: number) {
+  path_open(fd_flags: number) {
     const file = new OpenFile(this);
     if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
-    return file;
+    return { ret: wasi.ERRNO_SUCCESS, fd_obj: file };
   }
 
   get size(): bigint {
@@ -517,20 +516,21 @@ export interface FileSystemSyncAccessHandle {
 
 // Synchronous access to an individual file in the origin private file system.
 // Only allowed inside a WebWorker.
-export class SyncOPFSFile {
+export class SyncOPFSFile extends Inode {
   handle: FileSystemSyncAccessHandle;
   readonly: boolean;
 
   // FIXME needs a close() method to be called after start() to release the underlying handle
   constructor(handle: FileSystemSyncAccessHandle, options?: FileOptions) {
+    super();
     this.handle = handle;
     this.readonly = !!options?.readonly;
   }
 
-  open(fd_flags: number) {
+  path_open(fd_flags: number) {
     const file = new OpenSyncOPFSFile(this);
     if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
-    return file;
+    return { ret: wasi.ERRNO_SUCCESS, fd_obj: file };
   }
 
   get size(): bigint {
@@ -548,15 +548,12 @@ export class SyncOPFSFile {
   }
 }
 
-export class Directory {
-  contents: Map<string, File | Directory | SyncOPFSFile>;
+export class Directory extends Inode {
+  contents: Map<string, Inode>;
   readonly = false; // FIXME implement, like marking all files within readonly?
 
-  constructor(
-    contents:
-      | Map<string, File | Directory | SyncOPFSFile>
-      | [string, File | Directory | SyncOPFSFile][],
-  ) {
+  constructor(contents: Map<string, Inode> | [string, Inode][]) {
+    super();
     if (contents instanceof Array) {
       this.contents = new Map(contents);
     } else {
@@ -565,16 +562,16 @@ export class Directory {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  open(fd_flags: number) {
-    return new OpenDirectory(this);
+  path_open(fd_flags: number) {
+    return { ret: wasi.ERRNO_SUCCESS, fd_obj: new OpenDirectory(this) };
   }
 
   stat(): wasi.Filestat {
     return new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0n);
   }
 
-  get_entry_for_path(path: string): File | Directory | SyncOPFSFile | null {
-    let entry: File | Directory | SyncOPFSFile = this;
+  get_entry_for_path(path: string): Inode | null {
+    let entry: Inode = this;
     for (const component of path.split("/")) {
       if (component == "") break;
       if (component == ".") continue;
@@ -594,8 +591,8 @@ export class Directory {
 
   get_parent_dir_for_path(path: string): Directory | null {
     if (path === "") return null;
-    let entry: File | Directory | SyncOPFSFile = this;
-    let parentEntry: File | Directory | SyncOPFSFile = entry;
+    let entry: Inode = this;
+    let parentEntry: Directory = this;
     for (const component of path.split("/")) {
       if (component === "") break;
       if (component === ".") continue;
@@ -614,11 +611,8 @@ export class Directory {
     return parentEntry;
   }
 
-  create_entry_for_path(
-    path: string,
-    is_dir: boolean,
-  ): File | Directory | SyncOPFSFile {
-    let entry: File | Directory | SyncOPFSFile = this;
+  create_entry_for_path(path: string, is_dir: boolean): Inode {
+    let entry: Inode = this;
 
     const components: Array<string> = path
       .split("/")
