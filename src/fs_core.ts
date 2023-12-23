@@ -242,6 +242,11 @@ export class OpenDirectory extends Fd {
     this.dir = dir;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  fd_seek(offset: bigint, whence: number): { ret: number; offset: bigint } {
+    return { ret: wasi.ERRNO_ISDIR, offset: 0n };
+  }
+
   fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
     return { ret: 0, fdstat: new wasi.Fdstat(wasi.FILETYPE_DIRECTORY, 0) };
   }
