@@ -358,23 +358,7 @@ export class OpenDirectory extends Fd {
       // expected a directory but the file is not a directory
       return { ret: wasi.ERRNO_NOTDIR, fd_obj: null };
     }
-    if (
-      entry.readonly &&
-      (fs_rights_base & BigInt(wasi.RIGHTS_FD_WRITE)) ==
-        BigInt(wasi.RIGHTS_FD_WRITE)
-    ) {
-      // no write permission to file
-      return { ret: wasi.ERRNO_PERM, fd_obj: null };
-    }
-    if (
-      !(entry instanceof Directory) &&
-      (oflags & wasi.OFLAGS_TRUNC) == wasi.OFLAGS_TRUNC
-    ) {
-      // truncate existing file first
-      const ret = entry.truncate();
-      if (ret != wasi.ERRNO_SUCCESS) return { ret, fd_obj: null };
-    }
-    return entry.path_open(fd_flags);
+    return entry.path_open(oflags, fs_rights_base, fd_flags);
   }
 
   path_create_directory(path: string): number {
@@ -479,7 +463,21 @@ export class File extends Inode {
     this.readonly = !!options?.readonly;
   }
 
-  path_open(fd_flags: number) {
+  path_open(oflags: number, fs_rights_base: bigint, fd_flags: number) {
+    if (
+      this.readonly &&
+      (fs_rights_base & BigInt(wasi.RIGHTS_FD_WRITE)) ==
+        BigInt(wasi.RIGHTS_FD_WRITE)
+    ) {
+      // no write permission to file
+      return { ret: wasi.ERRNO_PERM, fd_obj: null };
+    }
+
+    if ((oflags & wasi.OFLAGS_TRUNC) == wasi.OFLAGS_TRUNC) {
+      if (this.readonly) return { ret: wasi.ERRNO_PERM, fd_obj: null };
+      this.data = new Uint8Array([]);
+    }
+
     const file = new OpenFile(this);
     if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
     return { ret: wasi.ERRNO_SUCCESS, fd_obj: file };
@@ -491,12 +489,6 @@ export class File extends Inode {
 
   stat(): wasi.Filestat {
     return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
-  }
-
-  truncate(): number {
-    if (this.readonly) return wasi.ERRNO_PERM;
-    this.data = new Uint8Array([]);
-    return wasi.ERRNO_SUCCESS;
   }
 }
 
@@ -527,7 +519,21 @@ export class SyncOPFSFile extends Inode {
     this.readonly = !!options?.readonly;
   }
 
-  path_open(fd_flags: number) {
+  path_open(oflags: number, fs_rights_base: bigint, fd_flags: number) {
+    if (
+      this.readonly &&
+      (fs_rights_base & BigInt(wasi.RIGHTS_FD_WRITE)) ==
+        BigInt(wasi.RIGHTS_FD_WRITE)
+    ) {
+      // no write permission to file
+      return { ret: wasi.ERRNO_PERM, fd_obj: null };
+    }
+
+    if ((oflags & wasi.OFLAGS_TRUNC) == wasi.OFLAGS_TRUNC) {
+      if (this.readonly) return { ret: wasi.ERRNO_PERM, fd_obj: null };
+      this.handle.truncate(0);
+    }
+
     const file = new OpenSyncOPFSFile(this);
     if (fd_flags & wasi.FDFLAGS_APPEND) file.fd_seek(0n, wasi.WHENCE_END);
     return { ret: wasi.ERRNO_SUCCESS, fd_obj: file };
@@ -540,17 +546,10 @@ export class SyncOPFSFile extends Inode {
   stat(): wasi.Filestat {
     return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
   }
-
-  truncate(): number {
-    if (this.readonly) return wasi.ERRNO_PERM;
-    this.handle.truncate(0);
-    return wasi.ERRNO_SUCCESS;
-  }
 }
 
 export class Directory extends Inode {
   contents: Map<string, Inode>;
-  readonly = false; // FIXME implement, like marking all files within readonly?
 
   constructor(contents: Map<string, Inode> | [string, Inode][]) {
     super();
@@ -562,7 +561,7 @@ export class Directory extends Inode {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  path_open(fd_flags: number) {
+  path_open(oflags: number, fs_rights_base: bigint, fd_flags: number) {
     return { ret: wasi.ERRNO_SUCCESS, fd_obj: new OpenDirectory(this) };
   }
 
