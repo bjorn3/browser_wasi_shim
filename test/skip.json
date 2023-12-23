@@ -10,7 +10,6 @@
   "WASI Rust tests": {
     "sched_yield": "not implemented yet",
     "path_rename": "fail",
-    "fd_advise": "fail",
     "path_exists": "fail",
     "path_open_dirfd_not_dir": "fail",
     "fd_filestat_set": "fail",
