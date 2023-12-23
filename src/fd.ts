@@ -35,16 +35,24 @@ export class Fd {
   fd_filestat_set_times(atim: bigint, mtim: bigint, fst_flags: number): number {
     return wasi.ERRNO_NOTSUP;
   }
-  fd_pread(view8: Uint8Array, iovs: Array<wasi.Iovec>, offset: bigint) {
+  fd_pread(
+    view8: Uint8Array,
+    iovs: Array<wasi.Iovec>,
+    offset: bigint,
+  ): { ret: number, nread: number } {
     return { ret: wasi.ERRNO_NOTSUP, nread: 0 };
   }
-  fd_prestat_get() {
+  fd_prestat_get(): { ret: number; prestat: wasi.Prestat | null } {
     return { ret: wasi.ERRNO_NOTSUP, prestat: null };
   }
-  fd_prestat_dir_name() {
+  fd_prestat_dir_name(): { ret: number; prestat_dir_name: Uint8Array | null } {
     return { ret: wasi.ERRNO_NOTSUP, prestat_dir_name: null };
   }
-  fd_pwrite(view8: Uint8Array, iovs: Array<wasi.Ciovec>, offset: bigint) {
+  fd_pwrite(
+    view8: Uint8Array,
+    iovs: Array<wasi.Ciovec>,
+    offset: bigint,
+  ): { ret: number, nwritten: number } {
     return { ret: wasi.ERRNO_NOTSUP, nwritten: 0 };
   }
   fd_read(
@@ -68,44 +76,44 @@ export class Fd {
   fd_tell(): { ret: number; offset: bigint } {
     return { ret: wasi.ERRNO_NOTSUP, offset: 0n };
   }
-  fd_write(view8: Uint8Array, iovs: Array<wasi.Ciovec>) {
+  fd_write(view8: Uint8Array, iovs: Array<wasi.Ciovec>): { ret: number; nwritten: number } {
     return { ret: wasi.ERRNO_NOTSUP, nwritten: 0 };
   }
-  path_create_directory(path): number {
+  path_create_directory(path: string): number {
     return wasi.ERRNO_NOTSUP;
   }
-  path_filestat_get(flags, path) {
+  path_filestat_get(flags: number, path: string): { ret: number, filestat: wasi.Filestat | null } {
     return { ret: wasi.ERRNO_NOTSUP, filestat: null };
   }
-  path_filestat_set_times(flags, path, atim, mtim, fst_flags) {
+  path_filestat_set_times(flags: number, path: string, atim: bigint, mtim: bigint, fst_flags: number): number {
     return wasi.ERRNO_NOTSUP;
   }
-  path_link(old_fd, old_flags, old_path, new_path): number {
+  path_link(old_fd: number, old_flags: number, old_path: string, new_path: string): number {
     return wasi.ERRNO_NOTSUP;
   }
   path_open(
-    dirflags,
-    path,
-    oflags,
-    fs_rights_base,
-    fs_rights_inheriting,
-    fdflags,
-  ) {
+    dirflags: number,
+    path: string,
+    oflags: number,
+    fs_rights_base: bigint,
+    fs_rights_inheriting: bigint,
+    fd_flags: number,
+  ): { ret: number; fd_obj: Fd | null } {
     return { ret: wasi.ERRNO_NOTSUP, fd_obj: null };
   }
-  path_readlink(path) {
+  path_readlink(path: string): { ret: number, data: string | null } {
     return { ret: wasi.ERRNO_NOTSUP, data: null };
   }
-  path_remove_directory(path): number {
+  path_remove_directory(path: string): number {
     return wasi.ERRNO_NOTSUP;
   }
-  path_rename(old_path, new_fd, new_path): number {
+  path_rename(old_path: string, new_fd: number, new_path: string): number {
     return wasi.ERRNO_NOTSUP;
   }
-  path_symlink(old_path, new_path): number {
+  path_symlink(old_path: string, new_path: string): number {
     return wasi.ERRNO_NOTSUP;
   }
-  path_unlink_file(path): number {
+  path_unlink_file(path: string): number {
     return wasi.ERRNO_NOTSUP;
   }
 }

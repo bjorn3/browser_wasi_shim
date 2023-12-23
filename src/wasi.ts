@@ -20,7 +20,7 @@ export default class WASI {
   env: Array<string> = [];
   fds: Array<Fd> = [];
   inst: { exports: { memory: WebAssembly.Memory } };
-  wasiImport: { [key: string]: (...args: Array<unknown>) => unknown };
+  wasiImport: { [key: string]: (...args: Array<any>) => unknown };
 
   /// Start a WASI command
   start(instance: {
@@ -549,9 +549,9 @@ export default class WASI {
         flags: number,
         path_ptr: number,
         path_len: number,
-        atim,
-        mtim,
-        fst_flags,
+        atim: bigint,
+        mtim: bigint,
+        fst_flags: number,
       ) {
         const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
@@ -651,12 +651,13 @@ export default class WASI {
           debug.log(path);
           const { ret, data } = self.fds[fd].path_readlink(path);
           if (data != null) {
-            if (data.length > buf_len) {
+            const data_buf = new TextEncoder().encode(data);
+            if (data_buf.length > buf_len) {
               buffer.setUint32(nread_ptr, 0, true);
               return wasi.ERRNO_BADF;
             }
-            buffer8.set(data, buf_ptr);
-            buffer.setUint32(nread_ptr, data.length, true);
+            buffer8.set(data_buf, buf_ptr);
+            buffer.setUint32(nread_ptr, data_buf.length, true);
           }
           return ret;
         } else {
