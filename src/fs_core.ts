@@ -318,31 +318,49 @@ export class OpenDirectory extends Fd {
 
   path_filestat_get(
     flags: number,
-    path: string,
+    path_str: string,
   ): { ret: number; filestat: wasi.Filestat | null } {
-    const entry = this.dir.get_entry_for_path(path);
-    if (entry == null) {
-      return { ret: wasi.ERRNO_NOENT, filestat: null };
+    const { ret: path_err, path } = Path.from(path_str);
+    if (path == null) {
+      return { ret: path_err, filestat: null };
     }
+
+    const { ret, entry } = this.dir.get_entry_for_path(path);
+    if (entry == null) {
+      return { ret, filestat: null };
+    }
+
     return { ret: 0, filestat: entry.stat() };
   }
 
   path_open(
     dirflags: number,
-    path: string,
+    path_str: string,
     oflags: number,
     fs_rights_base: bigint,
     fs_rights_inheriting: bigint,
     fd_flags: number,
   ): { ret: number; fd_obj: Fd | null } {
-    let entry = this.dir.get_entry_for_path(path);
+    let { ret: path_ret, path } = Path.from(path_str);
+    if (path == null) {
+      return { ret: path_ret, fd_obj: null };
+    }
+
+    let { ret, entry } = this.dir.get_entry_for_path(path);
     if (entry == null) {
+      if (ret != wasi.ERRNO_NOENT) {
+        return { ret, fd_obj: null };
+      }
       if ((oflags & wasi.OFLAGS_CREAT) == wasi.OFLAGS_CREAT) {
         // doesn't exist, but shall be created
-        entry = this.dir.create_entry_for_path(
-          path,
+        let { ret, entry: new_entry } = this.dir.create_entry_for_path(
+          path_str,
           (oflags & wasi.OFLAGS_DIRECTORY) == wasi.OFLAGS_DIRECTORY,
         );
+        if (new_entry == null) {
+          return { ret, fd_obj: null };
+        }
+        entry = new_entry;
       } else {
         // doesn't exist, no such file
         return { ret: wasi.ERRNO_NOENT, fd_obj: null };
@@ -372,33 +390,44 @@ export class OpenDirectory extends Fd {
     ).ret;
   }
 
-  path_unlink_file(path: string): number {
-    path = this.clean_path(path);
-    const parentDirEntry = this.dir.get_parent_dir_for_path(path);
-    const pathComponents = path.split("/");
-    const fileName = pathComponents[pathComponents.length - 1];
-    const entry = this.dir.get_entry_for_path(path);
-    if (entry === null) {
-      return wasi.ERRNO_NOENT;
+  path_unlink_file(path_str: string): number {
+    let { ret: path_ret, path } = Path.from(path_str);
+    if (path == null) {
+      return path_ret;
+    }
+
+    const {
+      ret: parent_ret,
+      parent_entry,
+      filename,
+      entry,
+    } = this.dir.get_parent_dir_and_entry_for_path(path, false);
+    if (parent_entry == null || filename == null || entry == null) {
+      return parent_ret;
     }
     if (entry.stat().filetype === wasi.FILETYPE_DIRECTORY) {
       return wasi.ERRNO_ISDIR;
     }
-    parentDirEntry.contents.delete(fileName);
+    parent_entry.contents.delete(filename);
     return wasi.ERRNO_SUCCESS;
   }
 
-  path_remove_directory(path: string): number {
-    path = this.clean_path(path);
-    const parentDirEntry = this.dir.get_parent_dir_for_path(path);
-    const pathComponents = path.split("/");
-    const fileName = pathComponents[pathComponents.length - 1];
-
-    const entry = this.dir.get_entry_for_path(path);
-
-    if (entry === null) {
-      return wasi.ERRNO_NOENT;
+  path_remove_directory(path_str: string): number {
+    let { ret: path_ret, path } = Path.from(path_str);
+    if (path == null) {
+      return path_ret;
     }
+
+    const {
+      ret: parent_ret,
+      parent_entry,
+      filename,
+      entry,
+    } = this.dir.get_parent_dir_and_entry_for_path(path, false);
+    if (parent_entry == null || filename == null || entry == null) {
+      return parent_ret;
+    }
+
     if (
       !(entry instanceof Directory) ||
       entry.stat().filetype !== wasi.FILETYPE_DIRECTORY
@@ -408,17 +437,10 @@ export class OpenDirectory extends Fd {
     if (entry.contents.size !== 0) {
       return wasi.ERRNO_NOTEMPTY;
     }
-    if (!parentDirEntry.contents.delete(fileName)) {
+    if (!parent_entry.contents.delete(filename)) {
       return wasi.ERRNO_NOENT;
     }
     return wasi.ERRNO_SUCCESS;
-  }
-
-  clean_path(path: string): string {
-    while (path.length > 0 && path[path.length - 1] === "/") {
-      path = path.slice(0, path.length - 1);
-    }
-    return path;
   }
 }
 
@@ -548,6 +570,41 @@ export class SyncOPFSFile extends Inode {
   }
 }
 
+class Path {
+  parts: string[] = [];
+  is_dir: boolean = false;
+
+  static from(path: string): { ret: number; path: Path | null } {
+    let self = new Path();
+    self.is_dir = path.endsWith("/");
+
+    if (path.startsWith("/")) {
+      return { ret: wasi.ERRNO_NOTCAPABLE, path: null };
+    }
+
+    for (const component of path.split("/")) {
+      if (component === "" || component === ".") {
+        continue;
+      }
+      if (component === "..") {
+        self.parts.pop();
+        continue;
+      }
+      self.parts.push(component);
+    }
+
+    return { ret: wasi.ERRNO_SUCCESS, path: self };
+  }
+
+  to_path_string(): string {
+    let s = this.parts.join("/");
+    if (this.is_dir) {
+      s += "/";
+    }
+    return s;
+  }
+}
+
 export class Directory extends Inode {
   contents: Map<string, Inode>;
 
@@ -569,75 +626,112 @@ export class Directory extends Inode {
     return new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0n);
   }
 
-  get_entry_for_path(path: string): Inode | null {
+  get_entry_for_path(path: Path): { ret: number; entry: Inode | null } {
     let entry: Inode = this;
-    for (const component of path.split("/")) {
-      if (component == "") break;
-      if (component == ".") continue;
+    for (const component of path.parts) {
       if (!(entry instanceof Directory)) {
-        return null;
+        return { ret: wasi.ERRNO_NOTDIR, entry: null };
       }
       const child = entry.contents.get(component);
       if (child !== undefined) {
         entry = child;
       } else {
         debug.log(component);
-        return null;
+        return { ret: wasi.ERRNO_NOENT, entry: null };
       }
     }
-    return entry;
+    return { ret: wasi.ERRNO_SUCCESS, entry };
   }
 
-  get_parent_dir_for_path(path: string): Directory | null {
-    if (path === "") return null;
-    let entry: Inode = this;
-    let parentEntry: Directory = this;
-    for (const component of path.split("/")) {
-      if (component === "") break;
-      if (component === ".") continue;
-      if (!(entry instanceof Directory)) {
-        debug.log(entry);
-        return null;
-      }
-      const child = entry.contents.get(component);
-      if (child === undefined) {
-        debug.log(component);
-        return null;
-      }
-      parentEntry = entry;
-      entry = child;
+  get_parent_dir_and_entry_for_path(
+    path: Path,
+    allow_undefined: boolean,
+  ): {
+    ret: number;
+    parent_entry: Directory | null;
+    filename: string | null;
+    entry: Inode | null;
+  } {
+    let filename = path.parts.pop();
+    path.is_dir = true;
+
+    if (filename === undefined) {
+      return {
+        ret: wasi.ERRNO_INVAL,
+        parent_entry: null,
+        filename: null,
+        entry: null,
+      };
     }
-    return parentEntry;
-  }
 
-  create_entry_for_path(path: string, is_dir: boolean): Inode {
-    let entry: Inode = this;
-
-    const components: Array<string> = path
-      .split("/")
-      .filter((component) => component != "/");
-    for (let i = 0; i < components.length; i++) {
-      const component = components[i];
-      if (!(entry instanceof Directory)) {
-        break;
-      }
-      const child = entry.contents.get(component);
-      if (child !== undefined) {
-        entry = child;
+    const { ret: entry_ret, entry: parent_entry } =
+      this.get_entry_for_path(path);
+    if (parent_entry == null) {
+      return {
+        ret: entry_ret,
+        parent_entry: null,
+        filename: null,
+        entry: null,
+      };
+    }
+    if (!(parent_entry instanceof Directory)) {
+      return {
+        ret: wasi.ERRNO_NOTDIR,
+        parent_entry: null,
+        filename: null,
+        entry: null,
+      };
+    }
+    let entry: Inode | undefined | null = parent_entry.contents.get(filename);
+    if (entry === undefined) {
+      if (!allow_undefined) {
+        return {
+          ret: wasi.ERRNO_NOENT,
+          parent_entry: null,
+          filename: null,
+          entry: null,
+        };
       } else {
-        debug.log("create", component);
-        let new_child;
-        if (i == components.length - 1 && !is_dir) {
-          new_child = new File(new ArrayBuffer(0));
-        } else {
-          new_child = new Directory(new Map());
-        }
-        entry.contents.set(component, new_child);
-        entry = new_child;
+        return { ret: wasi.ERRNO_SUCCESS, parent_entry, filename, entry: null };
       }
     }
+    return { ret: wasi.ERRNO_SUCCESS, parent_entry, filename, entry };
+  }
 
-    return entry;
+  create_entry_for_path(
+    path_str: string,
+    is_dir: boolean,
+  ): { ret: number; entry: Inode | null } {
+    let { ret: path_ret, path } = Path.from(path_str);
+    if (path == null) {
+      return { ret: path_ret, entry: null };
+    }
+
+    let {
+      ret: parent_ret,
+      parent_entry,
+      filename,
+      entry,
+    } = this.get_parent_dir_and_entry_for_path(path, true);
+    if (parent_entry == null || filename == null) {
+      return { ret: parent_ret, entry: null };
+    }
+
+    if (entry != null) {
+      return { ret: wasi.ERRNO_EXIST, entry: null };
+    }
+
+    debug.log("create", path);
+    let new_child;
+    if (!is_dir) {
+      new_child = new File(new ArrayBuffer(0));
+    } else {
+      new_child = new Directory(new Map());
+    }
+    parent_entry.contents.set(filename, new_child);
+    entry = new_child;
+
+    return { ret: wasi.ERRNO_SUCCESS, entry };
   }
 }
 
