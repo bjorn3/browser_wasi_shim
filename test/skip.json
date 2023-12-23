@@ -8,9 +8,7 @@
     "fdopendir-with-access": "fail"
   },
   "WASI Rust tests": {
-    "path_rename": "fail",
     "path_exists": "fail",
-    "path_open_dirfd_not_dir": "fail",
     "fd_filestat_set": "fail",
     "symlink_create": "fail",
     "path_open_read_write": "fail",

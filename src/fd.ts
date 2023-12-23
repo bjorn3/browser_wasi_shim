@@ -100,8 +100,11 @@ export abstract class Fd {
   ): number {
     return wasi.ERRNO_NOTSUP;
   }
-  path_link(path: string, inode: Inode): number {
+  path_link(path: string, inode: Inode, allow_dir: boolean): number {
     return wasi.ERRNO_NOTSUP;
+  }
+  path_unlink(path: string): { ret: number; inode_obj: Inode | null } {
+    return { ret: wasi.ERRNO_NOTSUP, inode_obj: null };
   }
   path_lookup(
     path: string,
@@ -117,7 +120,7 @@ export abstract class Fd {
     fs_rights_inheriting: bigint,
     fd_flags: number,
   ): { ret: number; fd_obj: Fd | null } {
-    return { ret: wasi.ERRNO_NOTSUP, fd_obj: null };
+    return { ret: wasi.ERRNO_NOTDIR, fd_obj: null };
   }
   path_readlink(path: string): { ret: number; data: string | null } {
     return { ret: wasi.ERRNO_NOTSUP, data: null };

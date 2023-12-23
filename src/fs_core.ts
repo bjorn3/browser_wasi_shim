@@ -429,9 +429,9 @@ export class OpenDirectory extends Fd {
     ).ret;
   }
 
-  path_link(path_str: string, inode: Inode): number {
+  path_link(path_str: string, inode: Inode, allow_dir: boolean): number {
     const { ret: path_ret, path } = Path.from(path_str);
-    if (path_str == null) {
+    if (path == null) {
       return path_ret;
     }
 
@@ -450,16 +450,64 @@ export class OpenDirectory extends Fd {
     }
 
     if (entry != null) {
-      return wasi.ERRNO_EXIST;
+      const source_is_dir = inode.stat().filetype == wasi.FILETYPE_DIRECTORY;
+      const target_is_dir = entry.stat().filetype == wasi.FILETYPE_DIRECTORY;
+      if (source_is_dir && target_is_dir) {
+        if (allow_dir && entry instanceof Directory) {
+          if (entry.contents.size == 0) {
+            // Allow overwriting empty directories
+          } else {
+            return wasi.ERRNO_NOTEMPTY;
+          }
+        } else {
+          return wasi.ERRNO_EXIST;
+        }
+      } else if (source_is_dir && !target_is_dir) {
+        return wasi.ERRNO_NOTDIR;
+      } else if (!source_is_dir && target_is_dir) {
+        return wasi.ERRNO_ISDIR;
+      } else if (
+        inode.stat().filetype == wasi.FILETYPE_REGULAR_FILE &&
+        entry.stat().filetype == wasi.FILETYPE_REGULAR_FILE
+      ) {
+        // Overwriting regular files is fine
+      } else {
+        return wasi.ERRNO_EXIST;
+      }
     }
 
-    if (inode.stat().filetype == wasi.FILETYPE_DIRECTORY) {
+    if (!allow_dir && inode.stat().filetype == wasi.FILETYPE_DIRECTORY) {
       return wasi.ERRNO_PERM;
     }
 
     parent_entry.contents.set(filename, inode);
 
     return wasi.ERRNO_SUCCESS;
+  }
+
+  path_unlink(path_str: string): { ret: number; inode_obj: Inode | null } {
+    const { ret: path_ret, path } = Path.from(path_str);
+    if (path == null) {
+      return { ret: path_ret, inode_obj: null };
+    }
+
+    const {
+      ret: parent_ret,
+      parent_entry,
+      filename,
+      entry,
+    } = this.dir.get_parent_dir_and_entry_for_path(path, true);
+    if (parent_entry == null || filename == null) {
+      return { ret: parent_ret, inode_obj: null };
+    }
+
+    if (entry == null) {
+      return { ret: wasi.ERRNO_NOENT, inode_obj: null };
+    }
+
+    parent_entry.contents.delete(filename);
+
+    return { ret: wasi.ERRNO_SUCCESS, inode_obj: entry };
   }
 
   path_unlink_file(path_str: string): number {

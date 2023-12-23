@@ -601,7 +601,7 @@ export default class WASI {
           if (inode_obj == null) {
             return ret;
           }
-          return self.fds[new_fd].path_link(new_path, inode_obj);
+          return self.fds[new_fd].path_link(new_path, inode_obj, false);
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -690,20 +690,39 @@ export default class WASI {
         }
       },
       path_rename(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         fd: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         old_path_ptr: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         old_path_len: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         new_fd: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         new_path_ptr: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         new_path_len: number,
       ): number {
-        throw "FIXME what is the best abstraction for this?";
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        if (self.fds[fd] != undefined && self.fds[new_fd] != undefined) {
+          const old_path = new TextDecoder("utf-8").decode(
+            buffer8.slice(old_path_ptr, old_path_ptr + old_path_len),
+          );
+          const new_path = new TextDecoder("utf-8").decode(
+            buffer8.slice(new_path_ptr, new_path_ptr + new_path_len),
+          );
+          // eslint-disable-next-line prefer-const
+          let { ret, inode_obj } = self.fds[fd].path_unlink(old_path);
+          if (inode_obj == null) {
+            return ret;
+          }
+          ret = self.fds[new_fd].path_link(new_path, inode_obj, true);
+          if (ret != wasi.ERRNO_SUCCESS) {
+            if (
+              self.fds[fd].path_link(old_path, inode_obj, true) !=
+              wasi.ERRNO_SUCCESS
+            ) {
+              throw "path_link should always return success when relinking an inode back to the original place";
+            }
+          }
+          return ret;
+        } else {
+          return wasi.ERRNO_BADF;
+        }
       },
       path_symlink(
         old_path_ptr: number,
