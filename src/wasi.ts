@@ -329,11 +329,16 @@ export default class WASI {
         // FIXME don't ignore path_len
         if (self.fds[fd] != undefined) {
           const { ret, prestat_dir_name } = self.fds[fd].fd_prestat_dir_name();
-          if (prestat_dir_name != null) {
-            const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
-            buffer8.set(prestat_dir_name, path_ptr);
+          if (prestat_dir_name == null) {
+            return ret;
           }
-          return ret;
+
+          const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+          buffer8.set(prestat_dir_name.slice(0, path_len), path_ptr);
+
+          return prestat_dir_name.byteLength > path_len
+            ? wasi.ERRNO_NAMETOOLONG
+            : wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }

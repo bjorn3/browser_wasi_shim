@@ -271,10 +271,6 @@ export class OpenSyncOPFSFile extends Fd {
   fd_sync(): number {
     return this.fd_datasync();
   }
-
-  fd_close(): number {
-    return wasi.ERRNO_SUCCESS;
-  }
 }
 
 export class OpenDirectory extends Fd {
@@ -287,7 +283,15 @@ export class OpenDirectory extends Fd {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   fd_seek(offset: bigint, whence: number): { ret: number; offset: bigint } {
-    return { ret: wasi.ERRNO_ISDIR, offset: 0n };
+    return { ret: wasi.ERRNO_BADF, offset: 0n };
+  }
+
+  fd_tell(): { ret: number; offset: bigint } {
+    return { ret: wasi.ERRNO_BADF, offset: 0n };
+  }
+
+  fd_allocate(offset: bigint, len: bigint): number {
+    return wasi.ERRNO_BADF;
   }
 
   fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
@@ -458,6 +462,40 @@ export class OpenDirectory extends Fd {
 
   fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
     return { ret: 0, filestat: this.dir.stat() };
+  }
+
+  fd_filestat_set_size(size: bigint): number {
+    return wasi.ERRNO_BADF;
+  }
+
+  fd_read(
+    view8: Uint8Array,
+    iovs: wasi.Iovec[],
+  ): { ret: number; nread: number } {
+    return { ret: wasi.ERRNO_BADF, nread: 0 };
+  }
+
+  fd_pread(
+    view8: Uint8Array,
+    iovs: wasi.Iovec[],
+    offset: bigint,
+  ): { ret: number; nread: number } {
+    return { ret: wasi.ERRNO_BADF, nread: 0 };
+  }
+
+  fd_write(
+    view8: Uint8Array,
+    iovs: wasi.Ciovec[],
+  ): { ret: number; nwritten: number } {
+    return { ret: wasi.ERRNO_BADF, nwritten: 0 };
+  }
+
+  fd_pwrite(
+    view8: Uint8Array,
+    iovs: wasi.Ciovec[],
+    offset: bigint,
+  ): { ret: number; nwritten: number } {
+    return { ret: wasi.ERRNO_BADF, nwritten: 0 };
   }
 }
 
