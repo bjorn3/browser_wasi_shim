@@ -594,12 +594,14 @@ export default class WASI {
           const new_path = new TextDecoder("utf-8").decode(
             buffer8.slice(new_path_ptr, new_path_ptr + new_path_len),
           );
-          return self.fds[new_fd].path_link(
-            old_fd,
-            old_flags,
+          const { ret, inode_obj } = self.fds[old_fd].path_lookup(
             old_path,
-            new_path,
+            old_flags,
           );
+          if (inode_obj == null) {
+            return ret;
+          }
+          return self.fds[new_fd].path_link(new_path, inode_obj);
         } else {
           return wasi.ERRNO_BADF;
         }

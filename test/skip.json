@@ -20,7 +20,6 @@
     "path_link": "fail",
     "fd_fdstat_set_rights": "fail",
     "readlink": "fail",
-    "unlink_file_trailing_slashes": "fail",
     "path_symlink_trailing_slashes": "fail",
     "poll_oneoff_stdio": "fail",
     "dangling_symlink": "fail",

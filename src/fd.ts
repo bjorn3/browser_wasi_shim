@@ -100,13 +100,14 @@ export abstract class Fd {
   ): number {
     return wasi.ERRNO_NOTSUP;
   }
-  path_link(
-    old_fd: number,
-    old_flags: number,
-    old_path: string,
-    new_path: string,
-  ): number {
+  path_link(path: string, inode: Inode): number {
     return wasi.ERRNO_NOTSUP;
+  }
+  path_lookup(
+    path: string,
+    dirflags: number,
+  ): { ret: number; inode_obj: Inode | null } {
+    return { ret: wasi.ERRNO_NOTSUP, inode_obj: null };
   }
   path_open(
     dirflags: number,
@@ -133,4 +134,14 @@ export abstract class Fd {
   path_unlink_file(path: string): number {
     return wasi.ERRNO_NOTSUP;
   }
+}
+
+export abstract class Inode {
+  abstract path_open(
+    oflags: number,
+    fs_rights_base: bigint,
+    fd_flags: number,
+  ): { ret: number; fd_obj: Fd | null };
+
+  abstract stat(): wasi.Filestat;
 }

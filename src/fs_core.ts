@@ -1,7 +1,6 @@
 import { debug } from "./debug.js";
 import * as wasi from "./wasi_defs.js";
-import { Fd } from "./fd.js";
-import { Inode } from "./inode.js";
+import { Fd, Inode } from "./fd.js";
 
 export class OpenFile extends Fd {
   file: File;
@@ -350,6 +349,23 @@ export class OpenDirectory extends Fd {
     return { ret: 0, filestat: entry.stat() };
   }
 
+  path_lookup(
+    path_str: string,
+    dirflags: number,
+  ): { ret: number; inode_obj: Inode | null } {
+    let { ret: path_ret, path } = Path.from(path_str);
+    if (path == null) {
+      return { ret: path_ret, inode_obj: null };
+    }
+
+    let { ret, entry } = this.dir.get_entry_for_path(path);
+    if (entry == null) {
+      return { ret, inode_obj: null };
+    }
+
+    return { ret: wasi.ERRNO_SUCCESS, inode_obj: entry };
+  }
+
   path_open(
     dirflags: number,
     path_str: string,
@@ -405,6 +421,39 @@ export class OpenDirectory extends Fd {
       0n,
       0,
     ).ret;
+  }
+
+  path_link(path_str: string, inode: Inode): number {
+    let { ret: path_ret, path } = Path.from(path_str);
+    if (path_str == null) {
+      return path_ret;
+    }
+
+    if (path.is_dir) {
+      return wasi.ERRNO_NOENT;
+    }
+
+    const {
+      ret: parent_ret,
+      parent_entry,
+      filename,
+      entry,
+    } = this.dir.get_parent_dir_and_entry_for_path(path, true);
+    if (parent_entry == null || filename == null) {
+      return parent_ret;
+    }
+
+    if (entry != null) {
+      return wasi.ERRNO_EXIST;
+    }
+
+    if (inode.stat().filetype == wasi.FILETYPE_DIRECTORY) {
+      return wasi.ERRNO_PERM;
+    }
+
+    parent_entry.contents.set(filename, inode);
+
+    return wasi.ERRNO_SUCCESS;
   }
 
   path_unlink_file(path_str: string): number {
