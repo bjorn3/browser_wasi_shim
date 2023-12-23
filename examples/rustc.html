@@ -29,11 +29,7 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
   This demo highlights how far `rustc` can get on this polyfill before failing due to other reasons.
 </p>
 <script type="module">
-    import { Fd } from "../dist/fd.js";
-    import { File, Directory, PreopenDirectory } from "../dist/fs_core.js";
-    import { WASI } from "../dist/index.js";
-    import { strace } from "../dist/strace.js";
-
+    import { Fd, File, Directory, PreopenDirectory, WASI, strace } from "../dist/index.js";
 
     var term = new Terminal({
         convertEol: true,
