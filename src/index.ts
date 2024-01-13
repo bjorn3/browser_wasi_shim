@@ -10,6 +10,7 @@ export {
   OpenDirectory,
   OpenSyncOPFSFile,
   PreopenDirectory,
+  ConsoleStdout,
 } from "./fs_core.js";
 export { strace } from "./strace.js";
 export * as wasi from "./wasi_defs.js";

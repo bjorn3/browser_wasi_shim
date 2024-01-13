@@ -588,3 +588,55 @@ export class Directory {
     return entry;
   }
 }
+
+export class ConsoleStdout extends Fd {
+  write: (buffer: Uint8Array) => void;
+
+  constructor(write: (buffer: Uint8Array) => void) {
+    super();
+    this.write = write;
+  }
+
+  fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
+    const filestat = new wasi.Filestat(
+      wasi.FILETYPE_CHARACTER_DEVICE,
+      BigInt(0),
+    );
+    return { ret: 0, filestat };
+  }
+
+  fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
+    const fdstat = new wasi.Fdstat(wasi.FILETYPE_CHARACTER_DEVICE, 0);
+    fdstat.fs_rights_base = BigInt(wasi.RIGHTS_FD_WRITE);
+    return { ret: 0, fdstat };
+  }
+
+  fd_write(
+    view8: Uint8Array,
+    iovs: Array<wasi.Ciovec>,
+  ): { ret: number; nwritten: number } {
+    let nwritten = 0;
+    for (const iovec of iovs) {
+      const buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
+      this.write(buffer);
+      nwritten += iovec.buf_len;
+    }
+    return { ret: 0, nwritten };
+  }
+
+  static lineBuffered(write: (line: string) => void): ConsoleStdout {
+    const dec = new TextDecoder("utf-8", { fatal: false });
+    let line_buf = "";
+    return new ConsoleStdout((buffer) => {
+      line_buf += dec.decode(buffer, { stream: true });
+      const lines = line_buf.split("\n");
+      for (const [i, line] of lines.entries()) {
+        if (i < lines.length - 1) {
+          write(line);
+        } else {
+          line_buf = line;
+        }
+      }
+    });
+  }
+}

@@ -1,36 +1,6 @@
 <html>
 <script type="module">
-    import { WASI, OpenFile, File, Fd, Directory, PreopenDirectory, wasi } from "/dist/index.js";
-    class ConsoleStdout extends Fd {
-        constructor(write) {
-            super();
-            this.write = write;
-        }
-
-        fd_filestat_get() {
-            const filestat = new wasi.Filestat(
-                wasi.FILETYPE_CHARACTER_DEVICE,
-                BigInt(0),
-            );
-            return { ret: 0, filestat };
-        }
-
-        fd_fdstat_get() {
-            const fdstat = new wasi.Fdstat(wasi.FILETYPE_CHARACTER_DEVICE, 0);
-            fdstat.fs_rights_base = BigInt(wasi.RIGHTS_FD_WRITE);
-            return { ret: 0, fdstat };
-        }
-
-        fd_write(view8, iovs) {
-            let nwritten = 0;
-            for (let iovec of iovs) {
-                let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
-                this.write(buffer);
-                nwritten += iovec.buf_len;
-            }
-            return { ret: 0, nwritten };
-        }
-    }
+    import { WASI, ConsoleStdout, OpenFile, File, Directory, PreopenDirectory } from "/dist/index.js";
 
     async function derivePreopens(dirs) {
         const rawPreopens = await window.bindingDerivePreopens(dirs)
