@@ -9,14 +9,14 @@ npm install @bjorn3/browser_wasi_shim --save
 ```
 
 ```javascript
-import { WASI, File, OpenFile, PreopenDirectory } from "@bjorn3/browser_wasi_shim";
+import { WASI, File, OpenFile, ConsoleStdout, PreopenDirectory } from "@bjorn3/browser_wasi_shim";
 
 let args = ["bin", "arg1", "arg2"];
 let env = ["FOO=bar"];
 let fds = [
     new OpenFile(new File([])), // stdin
-    new OpenFile(new File([])), // stdout
-    new OpenFile(new File([])), // stderr
+    ConsoleStdout.lineBuffered(msg => console.log(`[WASI stdout] ${msg}`)),
+    ConsoleStdout.lineBuffered(msg => console.warn(`[WASI stderr] ${msg}`)),
     new PreopenDirectory(".", {
         "example.c": new File(new TextEncoder("utf-8").encode(`#include "a"`)),
         "hello.rs": new File(new TextEncoder("utf-8").encode(`fn main() { println!("Hello World!"); }`)),
