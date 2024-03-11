@@ -43,10 +43,12 @@ export default class WASI {
 
   /// Initialize a WASI reactor
   initialize(instance: {
-    exports: { memory: WebAssembly.Memory; _initialize: () => unknown };
+    exports: { memory: WebAssembly.Memory; _initialize?: () => unknown };
   }) {
     this.inst = instance;
-    instance.exports._initialize();
+    if (instance.exports._initialize) {
+      instance.exports._initialize();
+    }
   }
 
   constructor(
