@@ -1,5 +1,5 @@
-import WASI from "./wasi.js";
-export { WASI };
+import WASI, { WASIProcExit } from "./wasi.js";
+export { WASI, WASIProcExit };
 
 export { Fd } from "./fd.js";
 export {
