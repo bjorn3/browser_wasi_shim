@@ -5,7 +5,7 @@
   "description": "A pure javascript shim for WASI",
   "type": "module",
   "scripts": {
-    "build": "swc src -d dist && tsc --emitDeclarationOnly",
+    "build": "swc src -d dist -s true && tsc --emitDeclarationOnly",
     "prepare": "swc src -d dist && tsc --emitDeclarationOnly",
     "test:node": "./test/run-testsuite.sh node",
     "test:browser": "playwright-core install && ./test/run-testsuite.sh browser",
