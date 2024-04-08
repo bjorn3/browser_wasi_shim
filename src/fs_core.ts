@@ -11,8 +11,35 @@ export class OpenFile extends Fd {
     this.file = file;
   }
 
+  fd_allocate(offset: bigint, len: bigint): number {
+    if (this.file.size > offset + len) {
+      // already big enough
+    } else {
+      // extend
+      const new_data = new Uint8Array(Number(offset + len));
+      new_data.set(this.file.data, 0);
+      this.file.data = new_data;
+    }
+    return wasi.ERRNO_SUCCESS;
+  }
+
   fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
     return { ret: 0, fdstat: new wasi.Fdstat(wasi.FILETYPE_REGULAR_FILE, 0) };
+  }
+
+  fd_filestat_set_size(size: bigint): number {
+    if (this.file.size > size) {
+      // truncate
+      this.file.data = new Uint8Array(
+        this.file.data.buffer.slice(0, Number(size)),
+      );
+    } else {
+      // extend
+      const new_data = new Uint8Array(Number(size));
+      new_data.set(this.file.data, 0);
+      this.file.data = new_data;
+    }
+    return wasi.ERRNO_SUCCESS;
   }
 
   fd_read(
@@ -147,6 +174,16 @@ export class OpenSyncOPFSFile extends Fd {
     this.file = file;
   }
 
+  fd_allocate(offset: bigint, len: bigint): number {
+    if (BigInt(this.file.handle.getSize()) > offset + len) {
+      // already big enough
+    } else {
+      // extend
+      this.file.handle.truncate(Number(offset + len));
+    }
+    return wasi.ERRNO_SUCCESS;
+  }
+
   fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
     return { ret: 0, fdstat: new wasi.Fdstat(wasi.FILETYPE_REGULAR_FILE, 0) };
   }
@@ -159,6 +196,11 @@ export class OpenSyncOPFSFile extends Fd {
         BigInt(this.file.handle.getSize()),
       ),
     };
+  }
+
+  fd_filestat_set_size(size: bigint): number {
+    this.file.handle.truncate(Number(size));
+    return wasi.ERRNO_SUCCESS;
   }
 
   fd_read(
@@ -240,6 +282,11 @@ export class OpenDirectory extends Fd {
   constructor(dir: Directory) {
     super();
     this.dir = dir;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  fd_seek(offset: bigint, whence: number): { ret: number; offset: bigint } {
+    return { ret: wasi.ERRNO_ISDIR, offset: 0n };
   }
 
   fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
