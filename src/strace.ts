@@ -8,7 +8,7 @@ export function strace<T extends object>(
       if (no_trace.includes(prop)) {
         return f;
       }
-      return function (...args) {
+      return function (...args: undefined[]) {
         console.log(prop, "(", ...args, ")");
         // eslint-disable-next-line @typescript-eslint/ban-types
         const result = Reflect.apply(f as Function, receiver, args);

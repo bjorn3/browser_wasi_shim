@@ -118,7 +118,9 @@ export const RIGHTS_POLL_FD_READWRITE = 1 << 27;
 export const RIGHTS_SOCK_SHUTDOWN = 1 << 28;
 
 export class Iovec {
+  //@ts-ignore strictPropertyInitialization
   buf: number;
+  //@ts-ignore strictPropertyInitialization
   buf_len: number;
 
   static read_bytes(view: DataView, ptr: number): Iovec {
@@ -142,7 +144,9 @@ export class Iovec {
 }
 
 export class Ciovec {
+  //@ts-ignore strictPropertyInitialization
   buf: number;
+  //@ts-ignore strictPropertyInitialization
   buf_len: number;
 
   static read_bytes(view: DataView, ptr: number): Ciovec {
@@ -349,7 +353,9 @@ export class PrestatDir {
 }
 
 export class Prestat {
+  //@ts-ignore strictPropertyInitialization
   tag: number;
+  //@ts-ignore strictPropertyInitialization
   inner: PrestatDir;
 
   static dir(name_len: number): Prestat {
