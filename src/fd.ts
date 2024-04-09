@@ -2,17 +2,11 @@
 import * as wasi from "./wasi_defs.js";
 
 export abstract class Fd {
-  fd_advise(offset: bigint, len: bigint, advice: number): number {
-    return wasi.ERRNO_SUCCESS;
-  }
   fd_allocate(offset: bigint, len: bigint): number {
     return wasi.ERRNO_NOTSUP;
   }
   fd_close(): number {
     return 0;
-  }
-  fd_datasync(): number {
-    return wasi.ERRNO_NOTSUP;
   }
   fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
     return { ret: wasi.ERRNO_NOTSUP, fdstat: null };
@@ -118,9 +112,6 @@ export abstract class Fd {
     return wasi.ERRNO_NOTSUP;
   }
   path_rename(old_path: string, new_fd: number, new_path: string): number {
-    return wasi.ERRNO_NOTSUP;
-  }
-  path_symlink(old_path: string, new_path: string): number {
     return wasi.ERRNO_NOTSUP;
   }
   path_unlink_file(path: string): number {

@@ -184,12 +184,15 @@ export default class WASI {
 
       fd_advise(
         fd: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         offset: bigint,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         len: bigint,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         advice: number,
       ): number {
         if (self.fds[fd] != undefined) {
-          return self.fds[fd].fd_advise(offset, len, advice);
+          return wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -212,7 +215,7 @@ export default class WASI {
       },
       fd_datasync(fd: number): number {
         if (self.fds[fd] != undefined) {
-          return self.fds[fd].fd_datasync();
+          return self.fds[fd].fd_sync();
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -788,13 +791,15 @@ export default class WASI {
       ): number {
         const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const old_path = new TextDecoder("utf-8").decode(
             buffer8.slice(old_path_ptr, old_path_ptr + old_path_len),
           );
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const new_path = new TextDecoder("utf-8").decode(
             buffer8.slice(new_path_ptr, new_path_ptr + new_path_len),
           );
-          return self.fds[fd].path_symlink(old_path, new_path);
+          return wasi.ERRNO_NOTSUP;
         } else {
           return wasi.ERRNO_BADF;
         }
