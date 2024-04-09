@@ -581,6 +581,8 @@ export default class WASI {
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
           return self.fds[fd].path_create_directory(path);
+        } else {
+          return wasi.ERRNO_BADF;
         }
       },
       path_filestat_get(
