@@ -300,9 +300,22 @@ export default class WASI {
             iovs_ptr,
             iovs_len,
           );
-          const { ret, nread } = self.fds[fd].fd_pread(buffer8, iovecs, offset);
+          let nread = 0;
+          for (const iovec of iovecs) {
+            const { ret, data } = self.fds[fd].fd_pread(iovec.buf_len, offset);
+            if (ret != wasi.ERRNO_SUCCESS) {
+              buffer.setUint32(nread_ptr, nread, true);
+              return ret;
+            }
+            buffer8.set(data, iovec.buf);
+            nread += data.length;
+            offset += BigInt(data.length);
+            if (data.length != iovec.buf_len) {
+              break;
+            }
+          }
           buffer.setUint32(nread_ptr, nread, true);
-          return ret;
+          return wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -358,13 +371,25 @@ export default class WASI {
             iovs_ptr,
             iovs_len,
           );
-          const { ret, nwritten } = self.fds[fd].fd_pwrite(
-            buffer8,
-            iovecs,
-            offset,
-          );
+          let nwritten = 0;
+          for (const iovec of iovecs) {
+            const data = buffer8.slice(iovec.buf, iovec.buf + iovec.buf_len);
+            const { ret, nwritten: nwritten_part } = self.fds[fd].fd_pwrite(
+              data,
+              offset,
+            );
+            if (ret != wasi.ERRNO_SUCCESS) {
+              buffer.setUint32(nwritten_ptr, nwritten, true);
+              return ret;
+            }
+            nwritten += nwritten_part;
+            offset += BigInt(nwritten_part);
+            if (nwritten_part != data.byteLength) {
+              break;
+            }
+          }
           buffer.setUint32(nwritten_ptr, nwritten, true);
-          return ret;
+          return wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -383,9 +408,21 @@ export default class WASI {
             iovs_ptr,
             iovs_len,
           );
-          const { ret, nread } = self.fds[fd].fd_read(buffer8, iovecs);
+          let nread = 0;
+          for (const iovec of iovecs) {
+            const { ret, data } = self.fds[fd].fd_read(iovec.buf_len);
+            if (ret != wasi.ERRNO_SUCCESS) {
+              buffer.setUint32(nread_ptr, nread, true);
+              return ret;
+            }
+            buffer8.set(data, iovec.buf);
+            nread += data.length;
+            if (data.length != iovec.buf_len) {
+              break;
+            }
+          }
           buffer.setUint32(nread_ptr, nread, true);
-          return ret;
+          return wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -510,9 +547,22 @@ export default class WASI {
             iovs_ptr,
             iovs_len,
           );
-          const { ret, nwritten } = self.fds[fd].fd_write(buffer8, iovecs);
+          let nwritten = 0;
+          for (const iovec of iovecs) {
+            const data = buffer8.slice(iovec.buf, iovec.buf + iovec.buf_len);
+            const { ret, nwritten: nwritten_part } =
+              self.fds[fd].fd_write(data);
+            if (ret != wasi.ERRNO_SUCCESS) {
+              buffer.setUint32(nwritten_ptr, nwritten, true);
+              return ret;
+            }
+            nwritten += nwritten_part;
+            if (nwritten_part != data.byteLength) {
+              break;
+            }
+          }
           buffer.setUint32(nwritten_ptr, nwritten, true);
-          return ret;
+          return wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }

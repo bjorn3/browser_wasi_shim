@@ -35,12 +35,8 @@ export abstract class Fd {
   fd_filestat_set_times(atim: bigint, mtim: bigint, fst_flags: number): number {
     return wasi.ERRNO_NOTSUP;
   }
-  fd_pread(
-    view8: Uint8Array,
-    iovs: Array<wasi.Iovec>,
-    offset: bigint,
-  ): { ret: number; nread: number } {
-    return { ret: wasi.ERRNO_NOTSUP, nread: 0 };
+  fd_pread(size: number, offset: bigint): { ret: number; data: Uint8Array } {
+    return { ret: wasi.ERRNO_NOTSUP, data: new Uint8Array() };
   }
   fd_prestat_get(): { ret: number; prestat: wasi.Prestat | null } {
     return { ret: wasi.ERRNO_NOTSUP, prestat: null };
@@ -49,17 +45,13 @@ export abstract class Fd {
     return { ret: wasi.ERRNO_NOTSUP, prestat_dir_name: null };
   }
   fd_pwrite(
-    view8: Uint8Array,
-    iovs: Array<wasi.Ciovec>,
+    data: Uint8Array,
     offset: bigint,
   ): { ret: number; nwritten: number } {
     return { ret: wasi.ERRNO_NOTSUP, nwritten: 0 };
   }
-  fd_read(
-    view8: Uint8Array,
-    iovs: Array<wasi.Iovec>,
-  ): { ret: number; nread: number } {
-    return { ret: wasi.ERRNO_NOTSUP, nread: 0 };
+  fd_read(size: number): { ret: number; data: Uint8Array } {
+    return { ret: wasi.ERRNO_NOTSUP, data: new Uint8Array() };
   }
   fd_readdir_single(cookie: bigint): {
     ret: number;
@@ -76,10 +68,7 @@ export abstract class Fd {
   fd_tell(): { ret: number; offset: bigint } {
     return { ret: wasi.ERRNO_NOTSUP, offset: 0n };
   }
-  fd_write(
-    view8: Uint8Array,
-    iovs: Array<wasi.Ciovec>,
-  ): { ret: number; nwritten: number } {
+  fd_write(data: Uint8Array): { ret: number; nwritten: number } {
     return { ret: wasi.ERRNO_NOTSUP, nwritten: 0 };
   }
   path_create_directory(path: string): number {

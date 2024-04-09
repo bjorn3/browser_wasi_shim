@@ -101,22 +101,11 @@ export class OpenSyncOPFSFile extends Fd {
     return wasi.ERRNO_SUCCESS;
   }
 
-  fd_read(
-    view8: Uint8Array,
-    iovs: Array<wasi.Iovec>,
-  ): { ret: number; nread: number } {
-    let nread = 0;
-    for (const iovec of iovs) {
-      if (this.position < this.file.handle.getSize()) {
-        const buf = new Uint8Array(view8.buffer, iovec.buf, iovec.buf_len);
-        const n = this.file.handle.read(buf, { at: Number(this.position) });
-        this.position += BigInt(n);
-        nread += n;
-      } else {
-        break;
-      }
-    }
-    return { ret: 0, nread };
+  fd_read(size: number): { ret: number; data: Uint8Array } {
+    const buf = new Uint8Array(size);
+    const n = this.file.handle.read(buf, { at: Number(this.position) });
+    this.position += BigInt(n);
+    return { ret: 0, data: buf.slice(0, n) };
   }
 
   fd_seek(
@@ -144,20 +133,13 @@ export class OpenSyncOPFSFile extends Fd {
     return { ret: wasi.ERRNO_SUCCESS, offset: this.position };
   }
 
-  fd_write(
-    view8: Uint8Array,
-    iovs: Array<wasi.Iovec>,
-  ): { ret: number; nwritten: number } {
-    let nwritten = 0;
-    if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten };
-    for (const iovec of iovs) {
-      const buf = new Uint8Array(view8.buffer, iovec.buf, iovec.buf_len);
-      // don't need to extend file manually, just write
-      const n = this.file.handle.write(buf, { at: Number(this.position) });
-      this.position += BigInt(n);
-      nwritten += n;
-    }
-    return { ret: wasi.ERRNO_SUCCESS, nwritten };
+  fd_write(data: Uint8Array): { ret: number; nwritten: number } {
+    if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten: 0 };
+
+    // don't need to extend file manually, just write
+    const n = this.file.handle.write(data, { at: Number(this.position) });
+    this.position += BigInt(n);
+    return { ret: wasi.ERRNO_SUCCESS, nwritten: n };
   }
 
   fd_datasync(): number {

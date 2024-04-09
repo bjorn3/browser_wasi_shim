@@ -25,14 +25,9 @@ class NodeStdout extends Fd {
     return { ret: 0, fdstat };
   }
 
-  fd_write(view8, iovs) {
-    let nwritten = 0;
-    for (let iovec of iovs) {
-      let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
-      this.out.write(buffer);
-      nwritten += iovec.buf_len;
-    }
-    return { ret: 0, nwritten };
+  fd_write(data) {
+    this.out.write(data);
+    return { ret: 0, nwritten: data.byteLength };
   }
 }
 

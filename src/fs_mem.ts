@@ -42,47 +42,21 @@ export class OpenFile extends Fd {
     return wasi.ERRNO_SUCCESS;
   }
 
-  fd_read(
-    view8: Uint8Array,
-    iovs: Array<wasi.Iovec>,
-  ): { ret: number; nread: number } {
-    let nread = 0;
-    for (const iovec of iovs) {
-      if (this.file_pos < this.file.data.byteLength) {
-        const slice = this.file.data.slice(
-          Number(this.file_pos),
-          Number(this.file_pos + BigInt(iovec.buf_len)),
-        );
-        view8.set(slice, iovec.buf);
-        this.file_pos += BigInt(slice.length);
-        nread += slice.length;
-      } else {
-        break;
-      }
-    }
-    return { ret: 0, nread };
+  fd_read(size: number): { ret: number; data: Uint8Array } {
+    const slice = this.file.data.slice(
+      Number(this.file_pos),
+      Number(this.file_pos + BigInt(size)),
+    );
+    this.file_pos += BigInt(slice.length);
+    return { ret: 0, data: slice };
   }
 
-  fd_pread(
-    view8: Uint8Array,
-    iovs: Array<wasi.Iovec>,
-    offset: bigint,
-  ): { ret: number; nread: number } {
-    let nread = 0;
-    for (const iovec of iovs) {
-      if (offset < this.file.data.byteLength) {
-        const slice = this.file.data.slice(
-          Number(offset),
-          Number(offset + BigInt(iovec.buf_len)),
-        );
-        view8.set(slice, iovec.buf);
-        offset += BigInt(slice.length);
-        nread += slice.length;
-      } else {
-        break;
-      }
-    }
-    return { ret: 0, nread };
+  fd_pread(size: number, offset: bigint): { ret: number; data: Uint8Array } {
+    const slice = this.file.data.slice(
+      Number(offset),
+      Number(offset + BigInt(size)),
+    );
+    return { ret: 0, data: slice };
   }
 
   fd_seek(offset: bigint, whence: number): { ret: number; offset: bigint } {
@@ -113,51 +87,33 @@ export class OpenFile extends Fd {
     return { ret: 0, offset: this.file_pos };
   }
 
-  fd_write(
-    view8: Uint8Array,
-    iovs: Array<wasi.Ciovec>,
-  ): { ret: number; nwritten: number } {
-    let nwritten = 0;
-    if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten };
-    for (const iovec of iovs) {
-      const buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
-      if (this.file_pos + BigInt(buffer.byteLength) > this.file.size) {
-        const old = this.file.data;
-        this.file.data = new Uint8Array(
-          Number(this.file_pos + BigInt(buffer.byteLength)),
-        );
-        this.file.data.set(old);
-      }
-      this.file.data.set(
-        buffer.slice(0, Number(this.file.size - this.file_pos)),
-        Number(this.file_pos),
+  fd_write(data: Uint8Array): { ret: number; nwritten: number } {
+    if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten: 0 };
+
+    if (this.file_pos + BigInt(data.byteLength) > this.file.size) {
+      const old = this.file.data;
+      this.file.data = new Uint8Array(
+        Number(this.file_pos + BigInt(data.byteLength)),
       );
-      this.file_pos += BigInt(buffer.byteLength);
-      nwritten += iovec.buf_len;
+      this.file.data.set(old);
     }
-    return { ret: 0, nwritten };
+
+    this.file.data.set(data, Number(this.file_pos));
+    this.file_pos += BigInt(data.byteLength);
+    return { ret: 0, nwritten: data.byteLength };
   }
 
-  fd_pwrite(view8: Uint8Array, iovs: Array<wasi.Ciovec>, offset: bigint) {
-    let nwritten = 0;
-    if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten };
-    for (const iovec of iovs) {
-      const buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
-      if (offset + BigInt(buffer.byteLength) > this.file.size) {
-        const old = this.file.data;
-        this.file.data = new Uint8Array(
-          Number(offset + BigInt(buffer.byteLength)),
-        );
-        this.file.data.set(old);
-      }
-      this.file.data.set(
-        buffer.slice(0, Number(this.file.size - offset)),
-        Number(offset),
-      );
-      offset += BigInt(buffer.byteLength);
-      nwritten += iovec.buf_len;
+  fd_pwrite(data: Uint8Array, offset: bigint) {
+    if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten: 0 };
+
+    if (offset + BigInt(data.byteLength) > this.file.size) {
+      const old = this.file.data;
+      this.file.data = new Uint8Array(Number(offset + BigInt(data.byteLength)));
+      this.file.data.set(old);
     }
-    return { ret: 0, nwritten };
+
+    this.file.data.set(data, Number(offset));
+    return { ret: 0, nwritten: data.byteLength };
   }
 
   fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
@@ -464,40 +420,24 @@ export class OpenDirectory extends Fd {
     return wasi.ERRNO_BADF;
   }
 
-  fd_read(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    view8: Uint8Array,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    iovs: wasi.Iovec[],
-  ): { ret: number; nread: number } {
-    return { ret: wasi.ERRNO_BADF, nread: 0 };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  fd_read(size: number): { ret: number; data: Uint8Array } {
+    return { ret: wasi.ERRNO_BADF, data: new Uint8Array() };
   }
 
-  fd_pread(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    view8: Uint8Array,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    iovs: wasi.Iovec[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    offset: bigint,
-  ): { ret: number; nread: number } {
-    return { ret: wasi.ERRNO_BADF, nread: 0 };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  fd_pread(size: number, offset: bigint): { ret: number; data: Uint8Array } {
+    return { ret: wasi.ERRNO_BADF, data: new Uint8Array() };
   }
 
-  fd_write(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    view8: Uint8Array,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    iovs: wasi.Ciovec[],
-  ): { ret: number; nwritten: number } {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  fd_write(data: Uint8Array): { ret: number; nwritten: number } {
     return { ret: wasi.ERRNO_BADF, nwritten: 0 };
   }
 
   fd_pwrite(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    view8: Uint8Array,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    iovs: wasi.Ciovec[],
+    data: Uint8Array,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     offset: bigint,
   ): { ret: number; nwritten: number } {
@@ -785,17 +725,9 @@ export class ConsoleStdout extends Fd {
     return { ret: 0, fdstat };
   }
 
-  fd_write(
-    view8: Uint8Array,
-    iovs: Array<wasi.Ciovec>,
-  ): { ret: number; nwritten: number } {
-    let nwritten = 0;
-    for (const iovec of iovs) {
-      const buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
-      this.write(buffer);
-      nwritten += iovec.buf_len;
-    }
-    return { ret: 0, nwritten };
+  fd_write(data: Uint8Array): { ret: number; nwritten: number } {
+    this.write(data);
+    return { ret: 0, nwritten: data.byteLength };
   }
 
   static lineBuffered(write: (line: string) => void): ConsoleStdout {

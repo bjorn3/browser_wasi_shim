@@ -47,15 +47,11 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
             super();
             this.term = term;
         }
-        fd_write(view8/*: Uint8Array*/, iovs/*: [wasi.Iovec]*/)/*: {ret: number, nwritten: number}*/ {
+        fd_write(data/*: Uint8Array*/)/*: {ret: number, nwritten: number}*/ {
             let nwritten = 0;
-            for (let iovec of iovs) {
-                console.log(iovec.buf_len, iovec.buf_len, view8.slice(iovec.buf, iovec.buf + iovec.buf_len));
-                let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
-                this.term.writeUtf8(buffer);
-                nwritten += iovec.buf_len;
-            }
-            return { ret: 0, nwritten };
+            console.log(data);
+            this.term.writeUtf8(data);
+            return { ret: 0, nwritten: data.byteLength };
         }
     }
 
