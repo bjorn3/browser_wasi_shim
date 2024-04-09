@@ -35,9 +35,6 @@ export abstract class Fd {
   fd_prestat_get(): { ret: number; prestat: wasi.Prestat | null } {
     return { ret: wasi.ERRNO_NOTSUP, prestat: null };
   }
-  fd_prestat_dir_name(): { ret: number; prestat_dir_name: string | null } {
-    return { ret: wasi.ERRNO_NOTSUP, prestat_dir_name: null };
-  }
   fd_pwrite(
     data: Uint8Array,
     offset: bigint,

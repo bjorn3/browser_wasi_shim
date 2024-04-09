@@ -344,18 +344,16 @@ export default class WASI {
       ): number {
         // FIXME don't ignore path_len
         if (self.fds[fd] != undefined) {
-          const { ret, prestat_dir_name } = self.fds[fd].fd_prestat_dir_name();
-          if (prestat_dir_name == null) {
+          const { ret, prestat } = self.fds[fd].fd_prestat_get();
+          if (prestat == null) {
             return ret;
           }
-          const encoded_prestat_dir_name = new TextEncoder().encode(
-            prestat_dir_name,
-          );
+          const prestat_dir_name = prestat.inner.pr_name;
 
           const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
-          buffer8.set(encoded_prestat_dir_name.slice(0, path_len), path_ptr);
+          buffer8.set(prestat_dir_name.slice(0, path_len), path_ptr);
 
-          return encoded_prestat_dir_name.byteLength > path_len
+          return prestat_dir_name.byteLength > path_len
             ? wasi.ERRNO_NAMETOOLONG
             : wasi.ERRNO_SUCCESS;
         } else {

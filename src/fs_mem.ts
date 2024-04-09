@@ -456,14 +456,7 @@ export class PreopenDirectory extends OpenDirectory {
   fd_prestat_get(): { ret: number; prestat: wasi.Prestat | null } {
     return {
       ret: 0,
-      prestat: wasi.Prestat.dir(this.prestat_name.length),
-    };
-  }
-
-  fd_prestat_dir_name(): { ret: number; prestat_dir_name: string } {
-    return {
-      ret: 0,
-      prestat_dir_name: this.prestat_name,
+      prestat: wasi.Prestat.dir(this.prestat_name),
     };
   }
 }
