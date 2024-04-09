@@ -131,7 +131,7 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
         });
         term.writeln("\x1B[93mExecuting\x1B[0m");
         console.log(inst.exports);
-        try { w.start(inst); } catch(e) { term.writeln("Exception: " + e.message); term.writeln("backtrace:"); term.writeln(e.stack); throw e; }
+        try { w.start(inst); } catch(e) { term.writeln("Exception: " + e.message); /*term.writeln("backtrace:"); term.writeln(e.stack);*/ }
         term.writeln("\x1B[92mDone\x1B[0m");
 
         console.log(fds);
