@@ -345,11 +345,14 @@ export default class WASI {
           if (prestat_dir_name == null) {
             return ret;
           }
+          const encoded_prestat_dir_name = new TextEncoder().encode(
+            prestat_dir_name,
+          );
 
           const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
-          buffer8.set(prestat_dir_name.slice(0, path_len), path_ptr);
+          buffer8.set(encoded_prestat_dir_name.slice(0, path_len), path_ptr);
 
-          return prestat_dir_name.byteLength > path_len
+          return encoded_prestat_dir_name.byteLength > path_len
             ? wasi.ERRNO_NAMETOOLONG
             : wasi.ERRNO_SUCCESS;
         } else {

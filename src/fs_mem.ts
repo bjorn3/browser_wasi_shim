@@ -446,11 +446,11 @@ export class OpenDirectory extends Fd {
 }
 
 export class PreopenDirectory extends OpenDirectory {
-  prestat_name: Uint8Array;
+  prestat_name: string;
 
   constructor(name: string, contents: Map<string, Inode>) {
     super(new Directory(contents));
-    this.prestat_name = new TextEncoder().encode(name);
+    this.prestat_name = name;
   }
 
   fd_prestat_get(): { ret: number; prestat: wasi.Prestat | null } {
@@ -460,7 +460,7 @@ export class PreopenDirectory extends OpenDirectory {
     };
   }
 
-  fd_prestat_dir_name(): { ret: number; prestat_dir_name: Uint8Array } {
+  fd_prestat_dir_name(): { ret: number; prestat_dir_name: string } {
     return {
       ret: 0,
       prestat_dir_name: this.prestat_name,
