@@ -17,10 +17,10 @@ let fds = [
     new OpenFile(new File([])), // stdin
     ConsoleStdout.lineBuffered(msg => console.log(`[WASI stdout] ${msg}`)),
     ConsoleStdout.lineBuffered(msg => console.warn(`[WASI stderr] ${msg}`)),
-    new PreopenDirectory(".", {
-        "example.c": new File(new TextEncoder("utf-8").encode(`#include "a"`)),
-        "hello.rs": new File(new TextEncoder("utf-8").encode(`fn main() { println!("Hello World!"); }`)),
-    }),
+    new PreopenDirectory(".", [
+        ["example.c", new File(new TextEncoder("utf-8").encode(`#include "a"`))],
+        ["hello.rs", new File(new TextEncoder("utf-8").encode(`fn main() { println!("Hello World!"); }`))],
+    ]),
 ];
 let wasi = new WASI(args, env, fds);
 
