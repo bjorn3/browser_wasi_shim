@@ -82,34 +82,33 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
                             ["lib", new Directory(await (async function () {
                                 let dir = new Map();
                                 for (let file of [
-                                    "libaddr2line-3368a2ecf632bfc6.rlib",
-                                    "libadler-16845f650eeea12c.rlib",
-                                    "liballoc-359908cdc7960fbe.rlib",
-                                    "libcfg_if-7473f3420f2605c3.rlib",
-                                    "libcompiler_builtins-71ea7cc1bc898fb7.rlib",
+                                    "libaddr2line-b8754aeb03c02354.rlib",
+                                    "libadler-05c3545f6cd12159.rlib",
+                                    "liballoc-0dab879bc41cd6bd.rlib",
+                                    "libcfg_if-c7fd2cef50341546.rlib",
+                                    "libcompiler_builtins-a99947d020d809d6.rlib",
                                     "libcore-4b8e8a815d049db3.rlib",
-                                    "libgetopts-f44aac795000338f.rlib",
-                                    "libgimli-803608e8717daecb.rlib",
-                                    "libhashbrown-78466a7e64363027.rlib",
-                                    "liblibc-5175310f1f21926c.rlib",
-                                    "libmemchr-c435600275d2183b.rlib",
-                                    "libminiz_oxide-d34599dcae36be0e.rlib",
-                                    "libobject-95dcb95966ee8da6.rlib",
-                                    "libpanic_abort-b427edf763e95e4b.rlib",
-                                    "libpanic_unwind-bc7d0e983bae92ba.rlib",
-                                    "libproc_macro-89b7ce531133f6b1.rlib",
-                                    "librustc_demangle-a99802d1dda40ccf.rlib",
-                                    "librustc_std_workspace_alloc-f8e02d7936a431a0.rlib",
+                                    "libgetopts-bbb75529e85d129d.rlib",
+                                    "libgimli-598847d27d7a3cbf.rlib",
+                                    "libhashbrown-d2ff91fdf93cacb2.rlib",
+                                    "liblibc-dc63949c664c3fce.rlib",
+                                    "libmemchr-2d3a423be1a6cb96.rlib",
+                                    "libminiz_oxide-b109506a0ccc4c6a.rlib",
+                                    "libobject-7b48def7544c748b.rlib",
+                                    "libpanic_abort-c93441899b93b849.rlib",
+                                    "libpanic_unwind-11d9ba05b60bf694.rlib",
+                                    "libproc_macro-1a7f7840bb9983dc.rlib",
+                                    "librustc_demangle-59342a335246393d.rlib",
+                                    "librustc_std_workspace_alloc-552b185085090ff6.rlib",
                                     "librustc_std_workspace_core-5d8a121daa7eeaa9.rlib",
-                                    "librustc_std_workspace_std-f27d08c53ac7abc6.rlib",
-                                    "libstd-7b943f62dbb7006a.rlib",
-                                    "libstd-7b943f62dbb7006a.so",
-                                    "libstd_detect-81d31c776664c1e1.rlib",
-                                    "libsysroot-34f36b5e8fe41707.rlib",
-                                    "libtest-f472878f82ea373c.rlib",
-                                    "libtest-f472878f82ea373c.so",
-                                    "libunicode_width-d55ce9c674fbd422.rlib",
-                                    "libunwind-8ca3e01a84805f9e.rlib"
+                                    "librustc_std_workspace_std-97f43841ce452f7d.rlib",
+                                    "libstd-bdedb7706a556da2.rlib",
+                                    "libstd-bdedb7706a556da2.so",
+                                    "libstd_detect-cca21eebc4281add.rlib",
+                                    "libsysroot-f654e185be3ffebd.rlib",
+                                    "libtest-f06fa3fbc201c558.rlib",
+                                    "libunicode_width-19a0dcd589fa0877.rlib",
+                                    "libunwind-747b693f90af9445.rlib",
                                 ]) {
                                     dir.set(file, await load_external_file("/examples/wasm-rustc/lib/rustlib/x86_64-unknown-linux-gnu/lib/" + file));
                                 }
@@ -125,8 +124,17 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
         ];
 
         let w = new WASI(args, env, fds, { debug: true });
+        let next_thread_id = 1;
 
         let inst = await WebAssembly.instantiate(wasm, {
+            "env": { memory: new WebAssembly.Memory({ initial: 256, maximum: 16384, shared: true }) },
+            "wasi": {
+                "thread-spawn": function(start_arg) {
+                    let thread_id = next_thread_id++;
+                    inst.exports.wasi_thread_start(thread_id, start_arg);
+                    return thread_id;
+                }
+            },
             "wasi_snapshot_preview1": strace(w.wasiImport, ["fd_prestat_get"]),
         });
         term.writeln("\x1B[93mExecuting\x1B[0m");
@@ -136,8 +144,8 @@ See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how 
 
         console.log(fds);
         console.log(fds[5].dir);
-        console.log(fds[5].dir.contents.get("hello.hello.2490b9cce2492134-cgu.0.rcgu.o").data);
-        document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents.get("hello.hello.2490b9cce2492134-cgu.0.rcgu.o").data], { type: "application/elf" })) + "'>Download object</a>";
+        console.log(fds[5].dir.contents.get("hello.hello.65c991d23c885d45-cgu.0.rcgu.o").data);
+        document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents.get("hello.hello.65c991d23c885d45-cgu.0.rcgu.o").data], { type: "application/elf" })) + "'>Download object</a>";
         document.querySelector("#downloads").innerHTML += "<br><a href='" + URL.createObjectURL(new Blob([fds[5].dir.contents.get("hello.allocator_shim.rcgu.o").data], { type: "application/elf" })) + "'>Download allocator shim</a>";
     })();
 </script>
