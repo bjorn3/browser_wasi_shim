@@ -8,13 +8,9 @@
     "fdopendir-with-access": "fail"
   },
   "WASI Rust tests": {
-    "sched_yield": "not implemented yet",
-    "path_rename": "fail",
     "path_exists": "fail",
-    "path_open_dirfd_not_dir": "fail",
     "fd_filestat_set": "fail",
     "symlink_create": "fail",
-    "overwrite_preopen": "fail",
     "path_open_read_write": "fail",
     "path_rename_dir_trailing_slashes": "fail",
     "fd_flags_set": "fail",
@@ -22,17 +18,12 @@
     "path_link": "fail",
     "fd_fdstat_set_rights": "fail",
     "readlink": "fail",
-    "unlink_file_trailing_slashes": "fail",
     "path_symlink_trailing_slashes": "fail",
     "poll_oneoff_stdio": "fail",
     "dangling_symlink": "fail",
-    "dir_fd_op_failures": "fail",
-    "file_allocate": "fail",
     "nofollow_errors": "fail",
     "path_open_preopen": "fail",
-    "fd_readdir": "fail",
     "symlink_filestat": "fail",
-    "symlink_loop": "fail",
-    "interesting_paths": "fail"
+    "symlink_loop": "fail"
   }
 }

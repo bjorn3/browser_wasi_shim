@@ -184,12 +184,15 @@ export default class WASI {
 
       fd_advise(
         fd: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         offset: bigint,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         len: bigint,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         advice: number,
       ): number {
         if (self.fds[fd] != undefined) {
-          return self.fds[fd].fd_advise(offset, len, advice);
+          return wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -212,7 +215,7 @@ export default class WASI {
       },
       fd_datasync(fd: number): number {
         if (self.fds[fd] != undefined) {
-          return self.fds[fd].fd_datasync();
+          return self.fds[fd].fd_sync();
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -300,9 +303,22 @@ export default class WASI {
             iovs_ptr,
             iovs_len,
           );
-          const { ret, nread } = self.fds[fd].fd_pread(buffer8, iovecs, offset);
+          let nread = 0;
+          for (const iovec of iovecs) {
+            const { ret, data } = self.fds[fd].fd_pread(iovec.buf_len, offset);
+            if (ret != wasi.ERRNO_SUCCESS) {
+              buffer.setUint32(nread_ptr, nread, true);
+              return ret;
+            }
+            buffer8.set(data, iovec.buf);
+            nread += data.length;
+            offset += BigInt(data.length);
+            if (data.length != iovec.buf_len) {
+              break;
+            }
+          }
           buffer.setUint32(nread_ptr, nread, true);
-          return ret;
+          return wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -328,12 +344,18 @@ export default class WASI {
       ): number {
         // FIXME don't ignore path_len
         if (self.fds[fd] != undefined) {
-          const { ret, prestat_dir_name } = self.fds[fd].fd_prestat_dir_name();
-          if (prestat_dir_name != null) {
-            const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
-            buffer8.set(prestat_dir_name, path_ptr);
+          const { ret, prestat } = self.fds[fd].fd_prestat_get();
+          if (prestat == null) {
+            return ret;
           }
-          return ret;
+          const prestat_dir_name = prestat.inner.pr_name;
+
+          const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+          buffer8.set(prestat_dir_name.slice(0, path_len), path_ptr);
+
+          return prestat_dir_name.byteLength > path_len
+            ? wasi.ERRNO_NAMETOOLONG
+            : wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -353,13 +375,25 @@ export default class WASI {
             iovs_ptr,
             iovs_len,
           );
-          const { ret, nwritten } = self.fds[fd].fd_pwrite(
-            buffer8,
-            iovecs,
-            offset,
-          );
+          let nwritten = 0;
+          for (const iovec of iovecs) {
+            const data = buffer8.slice(iovec.buf, iovec.buf + iovec.buf_len);
+            const { ret, nwritten: nwritten_part } = self.fds[fd].fd_pwrite(
+              data,
+              offset,
+            );
+            if (ret != wasi.ERRNO_SUCCESS) {
+              buffer.setUint32(nwritten_ptr, nwritten, true);
+              return ret;
+            }
+            nwritten += nwritten_part;
+            offset += BigInt(nwritten_part);
+            if (nwritten_part != data.byteLength) {
+              break;
+            }
+          }
           buffer.setUint32(nwritten_ptr, nwritten, true);
-          return ret;
+          return wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -378,9 +412,21 @@ export default class WASI {
             iovs_ptr,
             iovs_len,
           );
-          const { ret, nread } = self.fds[fd].fd_read(buffer8, iovecs);
+          let nread = 0;
+          for (const iovec of iovecs) {
+            const { ret, data } = self.fds[fd].fd_read(iovec.buf_len);
+            if (ret != wasi.ERRNO_SUCCESS) {
+              buffer.setUint32(nread_ptr, nread, true);
+              return ret;
+            }
+            buffer8.set(data, iovec.buf);
+            nread += data.length;
+            if (data.length != iovec.buf_len) {
+              break;
+            }
+          }
           buffer.setUint32(nread_ptr, nread, true);
-          return ret;
+          return wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -505,9 +551,22 @@ export default class WASI {
             iovs_ptr,
             iovs_len,
           );
-          const { ret, nwritten } = self.fds[fd].fd_write(buffer8, iovecs);
+          let nwritten = 0;
+          for (const iovec of iovecs) {
+            const data = buffer8.slice(iovec.buf, iovec.buf + iovec.buf_len);
+            const { ret, nwritten: nwritten_part } =
+              self.fds[fd].fd_write(data);
+            if (ret != wasi.ERRNO_SUCCESS) {
+              buffer.setUint32(nwritten_ptr, nwritten, true);
+              return ret;
+            }
+            nwritten += nwritten_part;
+            if (nwritten_part != data.byteLength) {
+              break;
+            }
+          }
           buffer.setUint32(nwritten_ptr, nwritten, true);
-          return ret;
+          return wasi.ERRNO_SUCCESS;
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -523,6 +582,8 @@ export default class WASI {
             buffer8.slice(path_ptr, path_ptr + path_len),
           );
           return self.fds[fd].path_create_directory(path);
+        } else {
+          return wasi.ERRNO_BADF;
         }
       },
       path_filestat_get(
@@ -589,12 +650,14 @@ export default class WASI {
           const new_path = new TextDecoder("utf-8").decode(
             buffer8.slice(new_path_ptr, new_path_ptr + new_path_len),
           );
-          return self.fds[new_fd].path_link(
-            old_fd,
-            old_flags,
+          const { ret, inode_obj } = self.fds[old_fd].path_lookup(
             old_path,
-            new_path,
+            old_flags,
           );
+          if (inode_obj == null) {
+            return ret;
+          }
+          return self.fds[new_fd].path_link(new_path, inode_obj, false);
         } else {
           return wasi.ERRNO_BADF;
         }
@@ -683,20 +746,39 @@ export default class WASI {
         }
       },
       path_rename(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         fd: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         old_path_ptr: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         old_path_len: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         new_fd: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         new_path_ptr: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         new_path_len: number,
       ): number {
-        throw "FIXME what is the best abstraction for this?";
+        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+        if (self.fds[fd] != undefined && self.fds[new_fd] != undefined) {
+          const old_path = new TextDecoder("utf-8").decode(
+            buffer8.slice(old_path_ptr, old_path_ptr + old_path_len),
+          );
+          const new_path = new TextDecoder("utf-8").decode(
+            buffer8.slice(new_path_ptr, new_path_ptr + new_path_len),
+          );
+          // eslint-disable-next-line prefer-const
+          let { ret, inode_obj } = self.fds[fd].path_unlink(old_path);
+          if (inode_obj == null) {
+            return ret;
+          }
+          ret = self.fds[new_fd].path_link(new_path, inode_obj, true);
+          if (ret != wasi.ERRNO_SUCCESS) {
+            if (
+              self.fds[fd].path_link(old_path, inode_obj, true) !=
+              wasi.ERRNO_SUCCESS
+            ) {
+              throw "path_link should always return success when relinking an inode back to the original place";
+            }
+          }
+          return ret;
+        } else {
+          return wasi.ERRNO_BADF;
+        }
       },
       path_symlink(
         old_path_ptr: number,
@@ -707,13 +789,15 @@ export default class WASI {
       ): number {
         const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         if (self.fds[fd] != undefined) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const old_path = new TextDecoder("utf-8").decode(
             buffer8.slice(old_path_ptr, old_path_ptr + old_path_len),
           );
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const new_path = new TextDecoder("utf-8").decode(
             buffer8.slice(new_path_ptr, new_path_ptr + new_path_len),
           );
-          return self.fds[fd].path_symlink(old_path, new_path);
+          return wasi.ERRNO_NOTSUP;
         } else {
           return wasi.ERRNO_BADF;
         }

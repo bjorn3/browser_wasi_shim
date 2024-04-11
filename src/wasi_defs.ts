@@ -184,7 +184,7 @@ export const FILETYPE_SYMBOLIC_LINK = 7;
 
 export class Dirent {
   d_next: bigint;
-  d_ino: bigint = 1n;
+  d_ino: bigint = 0n;
   d_namlen: number;
   d_type: number;
   dir_name: Uint8Array;
@@ -341,14 +341,14 @@ export const SDFLAGS_WR = 1 << 1;
 export const PREOPENTYPE_DIR = 0;
 
 export class PrestatDir {
-  pr_name_len: number;
+  pr_name: Uint8Array;
 
-  constructor(name_len: number) {
-    this.pr_name_len = name_len;
+  constructor(name: string) {
+    this.pr_name = new TextEncoder().encode(name);
   }
 
   write_bytes(view: DataView, ptr: number) {
-    view.setUint32(ptr, this.pr_name_len, true);
+    view.setUint32(ptr, this.pr_name.byteLength, true);
   }
 }
 
@@ -358,10 +358,10 @@ export class Prestat {
   //@ts-ignore strictPropertyInitialization
   inner: PrestatDir;
 
-  static dir(name_len: number): Prestat {
+  static dir(name: string): Prestat {
     const prestat = new Prestat();
     prestat.tag = PREOPENTYPE_DIR;
-    prestat.inner = new PrestatDir(name_len);
+    prestat.inner = new PrestatDir(name);
     return prestat;
   }
 
