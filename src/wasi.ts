@@ -826,20 +826,16 @@ export default class WASI {
       },
       sched_yield() {},
       random_get(buf: number, buf_len: number) {
-        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
-        const end = buf + buf_len;
+        const buffer8 = new Uint8Array(
+          self.inst.exports.memory.buffer,
+        ).subarray(buf, buf + buf_len);
 
         if (self.hasCrypto) {
-          let i = buf;
-          for (; i < end; ) {
-            const next_i = i + 65_536;
-            crypto.getRandomValues(
-              buffer8.subarray(i, next_i > end ? end : next_i),
-            );
-            i = next_i;
+          for (let i = 0; i < buf_len; i += 65536) {
+            crypto.getRandomValues(buffer8.subarray(i, i + 65536));
           }
         } else {
-          for (let i = buf; i < end; i++) {
+          for (let i = 0; i < buf_len; i++) {
             buffer8[i] = (Math.random() * 256) | 0;
           }
         }
