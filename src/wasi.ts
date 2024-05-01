@@ -832,7 +832,7 @@ export default class WASI {
         let i = 0;
         for (; i < buf_len; ) {
           const next_i = i + 65_536;
-          globalThis.crypto.getRandomValues(
+          crypto.getRandomValues(
             buffer8.subarray(i, next_i > buf_len ? buf_len : next_i),
           );
           i = next_i;
