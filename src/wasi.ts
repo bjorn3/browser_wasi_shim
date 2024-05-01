@@ -22,6 +22,7 @@ export default class WASI {
   inst: { exports: { memory: WebAssembly.Memory } };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   wasiImport: { [key: string]: (...args: Array<any>) => unknown };
+  private hasCrypto: boolean = "crypto" in Function("return this")();
 
   /// Start a WASI command
   start(instance: {
@@ -828,7 +829,7 @@ export default class WASI {
         const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         const end = buf + buf_len;
 
-        if ("crypto" in global) {
+        if (this.hasCrypto) {
           let i = buf;
           for (; i < buf_len; ) {
             const next_i = i + 65_536;
