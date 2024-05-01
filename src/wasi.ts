@@ -829,7 +829,7 @@ export default class WASI {
         const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
         const end = buf + buf_len;
 
-        if (this.hasCrypto) {
+        if (self.hasCrypto) {
           let i = buf;
           for (; i < buf_len; ) {
             const next_i = i + 65_536;
