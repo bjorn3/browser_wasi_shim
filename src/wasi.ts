@@ -22,7 +22,6 @@ export default class WASI {
   inst: { exports: { memory: WebAssembly.Memory } };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   wasiImport: { [key: string]: (...args: Array<any>) => unknown };
-  private readonly hasCrypto: boolean = "crypto" in Function("return this")();
 
   /// Start a WASI command
   start(instance: {
@@ -830,7 +829,7 @@ export default class WASI {
           self.inst.exports.memory.buffer,
         ).subarray(buf, buf + buf_len);
 
-        if (self.hasCrypto) {
+        if ("crypto" in globalThis) {
           for (let i = 0; i < buf_len; i += 65536) {
             crypto.getRandomValues(buffer8.subarray(i, i + 65536));
           }
