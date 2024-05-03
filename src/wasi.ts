@@ -825,9 +825,18 @@ export default class WASI {
       },
       sched_yield() {},
       random_get(buf: number, buf_len: number) {
-        const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
-        for (let i = 0; i < buf_len; i++) {
-          buffer8[buf + i] = (Math.random() * 256) | 0;
+        const buffer8 = new Uint8Array(
+          self.inst.exports.memory.buffer,
+        ).subarray(buf, buf + buf_len);
+
+        if ("crypto" in globalThis) {
+          for (let i = 0; i < buf_len; i += 65536) {
+            crypto.getRandomValues(buffer8.subarray(i, i + 65536));
+          }
+        } else {
+          for (let i = 0; i < buf_len; i++) {
+            buffer8[i] = (Math.random() * 256) | 0;
+          }
         }
       },
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
