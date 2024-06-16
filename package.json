@@ -20,6 +20,8 @@
   "bugs": {
     "url": "https://github.com/bjorn3/browser_wasi_shim/issues"
   },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./typings/index.d.ts",
