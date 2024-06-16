@@ -55,6 +55,10 @@ $ npx http-server
 
 And visit [http://127.0.0.1:8080/examples/rustc.html]() in your browser.
 
+A more complete demo by [@LyonSyonII](https://github.com/LyonSyonII) which runs
+miri inside the browser can be found at <https://garriga.dev/rubri/>. (source
+at <https://github.com/LyonSyonII/rubri>)
+
 ## Testing
 
 ```
