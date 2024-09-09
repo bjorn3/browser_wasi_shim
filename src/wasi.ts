@@ -16,10 +16,10 @@ export class WASIProcExit extends Error {
 }
 
 export default class WASI {
-  args: Array<string> = [];
-  env: Array<string> = [];
-  fds: Array<Fd> = [];
-  inst: { exports: { memory: WebAssembly.Memory } };
+  private args: Array<string> = [];
+  private env: Array<string> = [];
+  private fds: Array<Fd> = [];
+  private inst: { exports: { memory: WebAssembly.Memory } };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   wasiImport: { [key: string]: (...args: Array<any>) => unknown };
 

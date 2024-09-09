@@ -151,10 +151,10 @@ export class OpenDirectory extends Fd {
     ret: number;
     dirent: wasi.Dirent | null;
   } {
-    if (debug.enabled) {
+    // if (debug.enabled) {
       debug.log("readdir_single", cookie);
       debug.log(cookie, this.dir.contents.keys());
-    }
+    // }
 
     if (cookie == 0n) {
       return {

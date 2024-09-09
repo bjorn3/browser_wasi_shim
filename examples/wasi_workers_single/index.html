@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+
+<p id="note">
+  ####
+</p>
+
+<script type="module">
+  import { WASI, File, OpenFile, ConsoleStdout, PreopenDirectory } from "../../dist/index.js";
+
+  (async () => {
+    let wasi = new WASI(
+      ["echo_and_rewrite", "hello.txt", "world", "new_world"], // args
+      ["FOO=bar"], // env
+      [
+        new OpenFile(new File([])), // stdin
+        ConsoleStdout.lineBuffered(msg => console.log(`[WASI stdout] ${msg}`)),
+        ConsoleStdout.lineBuffered(msg => console.warn(`[WASI stderr] ${msg}`)),
+        new PreopenDirectory(".", [
+          ["hello.txt", new File(new TextEncoder().encode("Hello, world!"))],
+        ]),
+      ],
+      { debug: true },
+    );
+    let wasm = await fetch("./echo_and_rewrite.wasm");
+    let buff = await wasm.arrayBuffer();
+    let { instance } = await WebAssembly.instantiate(buff, {
+      "wasi_snapshot_preview1": wasi.wasiImport,
+    });
+
+    // sleep 1000ms
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    wasi.start(instance);
+  })();
+</script>
+</body>
+</html>
