@@ -1,9 +1,9 @@
 import { debug } from "../debug.js";
-import { Fd } from "../fd.js";
-import { Options } from "../wasi.js";
-import { WASIFarmPark } from "./park.js";
-import { WASIFarmRefObject } from "./ref.js";
-import { WASIFarmParkUseArrayBuffer } from "./shared_array_buffer/park.js";
+import type { Fd } from "../fd.js";
+import type { Options } from "../wasi.js";
+import type { WASIFarmPark } from "./park.js";
+import type { WASIFarmRefObject } from "./ref.js";
+import { WASIFarmParkUseArrayBuffer } from "./shared_array_buffer/index.js";
 
 export class WASIFarm {
   private fds: Array<Fd>;
@@ -52,10 +52,17 @@ export class WASIFarm {
     //    Failed to execute 'postMessage' on 'Worker':
     //    SharedArrayBuffer transfer requires self.crossOriginIsolated.
     try {
-        new SharedArrayBuffer(4);
-        this.can_array_buffer = true;
-    } catch (_) {
-        this.can_array_buffer = false;
+      new SharedArrayBuffer(4);
+      this.can_array_buffer = true;
+    } catch (e) {
+      this.can_array_buffer = false;
+      console.warn("SharedArrayBuffer is not supported:", e);
+
+      if (!crossOriginIsolated) {
+        console.warn(
+          "SharedArrayBuffer is not supported because crossOriginIsolated is not enabled.",
+        );
+      }
     }
 
     if (this.can_array_buffer) {
@@ -92,7 +99,7 @@ export class WASIFarm {
         // console.log("fds", prop, value);
         this.fds[prop] = value;
         return true;
-      }
+      },
     });
 
     return fds;

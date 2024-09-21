@@ -1,5 +1,8 @@
-import { FdCloseSender } from "../sender.js";
-import { ToRefSenderUseArrayBuffer, ToRefSenderUseArrayBufferObject } from "./sender.js";
+import type { FdCloseSender } from "../sender.js";
+import {
+  ToRefSenderUseArrayBuffer,
+  type ToRefSenderUseArrayBufferObject,
+} from "./sender.js";
 
 export type FdCloseSenderUseArrayBufferObject = {
   max_share_arrays_memory?: number;
@@ -9,7 +12,10 @@ export type FdCloseSenderUseArrayBufferObject = {
 // Object to tell other processes,
 // such as child processes,
 // that the file descriptor has been closed
-export class FdCloseSenderUseArrayBuffer extends ToRefSenderUseArrayBuffer implements FdCloseSender {
+export class FdCloseSenderUseArrayBuffer
+  extends ToRefSenderUseArrayBuffer
+  implements FdCloseSender
+{
   // Should be able to change the size of memory as it accumulates more and more on memory
   constructor(
     max_share_arrays_memory?: number,
@@ -19,10 +25,7 @@ export class FdCloseSenderUseArrayBuffer extends ToRefSenderUseArrayBuffer imple
   }
 
   // Send the closed file descriptor to the target process
-  async send(
-    targets: Array<number>,
-    fd: number,
-  ): Promise<void> {
+  async send(targets: Array<number>, fd: number): Promise<void> {
     if (targets === undefined || targets.length === 0) {
       throw new Error("targets is empty");
     }
@@ -32,9 +35,7 @@ export class FdCloseSenderUseArrayBuffer extends ToRefSenderUseArrayBuffer imple
   }
 
   // Get the closed file descriptor from the target process
-  get(
-    id: number,
-  ): Array<number> | undefined {
+  get(id: number): Array<number> | undefined {
     const data = this.get_data(id);
     if (data === undefined) {
       return undefined;
@@ -51,9 +52,7 @@ export class FdCloseSenderUseArrayBuffer extends ToRefSenderUseArrayBuffer imple
   }
 
   // Initialize the class from object
-  static init_self(
-    sl: FdCloseSenderUseArrayBufferObject,
-  ): FdCloseSender {
+  static init_self(sl: FdCloseSenderUseArrayBufferObject): FdCloseSender {
     const sel = ToRefSenderUseArrayBuffer.init_self_inner(sl);
     return new FdCloseSenderUseArrayBuffer(
       sel.max_share_arrays_memory,

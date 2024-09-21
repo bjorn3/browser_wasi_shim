@@ -1,10 +1,10 @@
-import { Fd } from "../../fd.js";
+import type { Fd } from "../../fd.js";
 import * as wasi from "../../wasi_defs.js";
-import { AllocatorUseArrayBuffer } from "./allocator.js";
 import { WASIFarmPark } from "../park.js";
-import { WASIFarmRefUseArrayBufferObject } from "./ref.js";
-import { FdCloseSender } from "../sender.js";
+import type { FdCloseSender } from "../sender.js";
+import { AllocatorUseArrayBuffer } from "./allocator.js";
 import { FdCloseSenderUseArrayBuffer } from "./fd_close_sender.js";
+import type { WASIFarmRefUseArrayBufferObject } from "./ref.js";
 import { get_func_name_from_number } from "./util.js";
 
 export const fd_func_sig_u32_size: number = 18;
@@ -112,22 +112,20 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
     default_allow_fds: Array<number>,
     allocator_size?: number,
   ) {
-    super(
-      fds,
-      stdin,
-      stdout,
-      stderr,
-      default_allow_fds,
-    );
+    super(fds, stdin, stdout, stderr, default_allow_fds);
 
     if (allocator_size === undefined) {
       this.allocator = new AllocatorUseArrayBuffer();
     } else {
-      this.allocator = new AllocatorUseArrayBuffer(new SharedArrayBuffer(allocator_size));
+      this.allocator = new AllocatorUseArrayBuffer(
+        new SharedArrayBuffer(allocator_size),
+      );
     }
     const max_fds_len = 128;
     this.lock_fds = new SharedArrayBuffer(4 * max_fds_len * 3);
-    this.fd_func_sig = new SharedArrayBuffer(fd_func_sig_u32_size * 4 * max_fds_len);
+    this.fd_func_sig = new SharedArrayBuffer(
+      fd_func_sig_u32_size * 4 * max_fds_len,
+    );
     this.fds_len_and_num = new SharedArrayBuffer(8);
 
     const view = new Int32Array(this.fds_len_and_num);
@@ -159,7 +157,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
   // received and listen the fd
   // and set fds.length
   async notify_set_fd(fd: number) {
-    if (this.fds[fd] == undefined) {
+    if (this.fds[fd] === undefined) {
       throw new Error("fd is not defined");
     }
     if (fd >= 128) {
@@ -185,7 +183,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
     (async () => {
       await this.listen_fds[fd];
       this.listen_fds[fd] = undefined;
-    })()
+    })();
 
     // console.log("notify_rm_fd", fd);
     // console.log("fds", this.fds);
@@ -206,9 +204,8 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
   can_set_new_fd(fd: number): [boolean, Promise<void> | undefined] {
     if (this.listen_fds[fd] instanceof Promise) {
       return [false, this.listen_fds[fd]];
-    } else {
-      return [true, undefined];
     }
+    return [true, undefined];
   }
 
   // listen all fds and base
@@ -232,12 +229,12 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
     Atomics.store(lock_view, 1, 0);
 
     // eslint-disable-next-line no-constant-condition
-    while(true) {
+    while (true) {
       try {
         let lock: "not-equal" | "timed-out" | "ok";
 
         const { value } = Atomics.waitAsync(lock_view, 1, 0);
-        if ( value instanceof Promise) {
+        if (value instanceof Promise) {
           lock = await value;
         } else {
           lock = value;
@@ -248,7 +245,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
 
         const func_number = Atomics.load(lock_view, 2);
 
-        switcher: switch (func_number) {
+        switch (func_number) {
           // set_fds_map: (fds_ptr: u32, fds_len: u32);
           case 0: {
             // console.log("set_fds_map");
@@ -278,7 +275,10 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
 
             // console.log("listen_base fds_map", this.fds_map);
 
-            break switcher;
+            // sleep 1000ms
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            break;
           }
         }
 
@@ -292,7 +292,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             console.warn("notify failed, waiter is late");
             continue;
           }
-          throw new Error("notify failed: " + num);
+          throw new Error(`notify failed: ${num}`);
         }
       } catch (e) {
         console.error("error", e);
@@ -310,7 +310,10 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
     const func_sig_view_u16 = new Uint16Array(this.fd_func_sig, bytes_offset);
     const func_sig_view_i32 = new Int32Array(this.fd_func_sig, bytes_offset);
     const func_sig_view_u32 = new Int32Array(this.fd_func_sig, bytes_offset);
-    const func_sig_view_u64 = new BigUint64Array(this.fd_func_sig, bytes_offset);
+    const func_sig_view_u64 = new BigUint64Array(
+      this.fd_func_sig,
+      bytes_offset,
+    );
     const errno_offset = fd_func_sig_u32_size - 1;
     Atomics.store(lock_view, 0, 0);
     Atomics.store(lock_view, 1, 0);
@@ -322,7 +325,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
         let lock: "not-equal" | "timed-out" | "ok";
 
         const { value } = Atomics.waitAsync(lock_view, 1, 0);
-        if ( value instanceof Promise) {
+        if (value instanceof Promise) {
           // console.log("listen", fd_n, 1);
           lock = await value;
         } else {
@@ -335,7 +338,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
         const func_lock = Atomics.load(lock_view, 1);
 
         if (func_lock !== 1) {
-          throw new Error("func_lock is already set: " + func_lock);
+          throw new Error(`func_lock is already set: ${func_lock}`);
         }
 
         // console.log("func_lock", func_lock);
@@ -345,13 +348,13 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
         const set_error = (errno: number) => {
           // console.log("set_error", errno, "pointer", errno_offset);
           Atomics.store(func_sig_view_i32, errno_offset, errno);
-        }
+        };
 
         const func_number = Atomics.load(func_sig_view_u32, 0);
 
         // console.log("called: func: ", get_func_name_from_number(func_number), "fd: ", fd_n);
 
-        switcher: switch (func_number) {
+        switch (func_number) {
           // fd_advise: (fd: u32) => errno;
           case 7: {
             const fd = Atomics.load(func_sig_view_u32, 1);
@@ -359,7 +362,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const error = this.fd_advise(fd);
 
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_allocate: (fd: u32, offset: u64, len: u64) => errno;
           case 8: {
@@ -370,7 +373,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const error = this.fd_allocate(fd, offset, len);
 
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_close: (fd: u32) => errno;
           case 9: {
@@ -381,7 +384,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             // console.log("fd_close", fd, error);
 
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_datasync: (fd: u32) => errno;
           case 10: {
@@ -390,22 +393,22 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const error = this.fd_datasync(fd);
 
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_fdstat_get: (fd: u32) => [wasi.Fdstat(u32 * 6)], errno];
           case 11: {
             const fd = Atomics.load(func_sig_view_u32, 1);
 
-            const [ fdstat, ret ] = this.fd_fdstat_get(fd);
+            const [fdstat, ret] = this.fd_fdstat_get(fd);
 
             if (fdstat) {
-                Atomics.store(func_sig_view_u8, 0, fdstat.fs_filetype);
-                Atomics.store(func_sig_view_u16, 2, fdstat.fs_flags);
-                Atomics.store(func_sig_view_u64, 1, fdstat.fs_rights_base);
-                Atomics.store(func_sig_view_u64, 2, fdstat.fs_rights_inherited);
+              Atomics.store(func_sig_view_u8, 0, fdstat.fs_filetype);
+              Atomics.store(func_sig_view_u16, 2, fdstat.fs_flags);
+              Atomics.store(func_sig_view_u64, 1, fdstat.fs_rights_base);
+              Atomics.store(func_sig_view_u64, 2, fdstat.fs_rights_inherited);
             }
             set_error(ret);
-            break switcher;
+            break;
           }
           // fd_fdstat_set_flags: (fd: u32, flags: u16) => errno;
           case 12: {
@@ -415,7 +418,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const error = this.fd_fdstat_set_flags(fd, flags);
 
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_fdstat_set_rights: (fd: u32, fs_rights_base: u64, fs_rights_inheriting: u64) => errno;
           case 13: {
@@ -423,30 +426,34 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const fs_rights_base = Atomics.load(func_sig_view_u64, 1);
             const fs_rights_inheriting = Atomics.load(func_sig_view_u64, 2);
 
-            const error = this.fd_fdstat_set_rights(fd, fs_rights_base, fs_rights_inheriting);
+            const error = this.fd_fdstat_set_rights(
+              fd,
+              fs_rights_base,
+              fs_rights_inheriting,
+            );
 
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_filestat_get: (fd: u32) => [wasi.Filestat(u32 * 16)], errno];
           case 14: {
             const fd = Atomics.load(func_sig_view_u32, 1);
 
-            const [ filestat, ret ] = this.fd_filestat_get(fd);
+            const [filestat, ret] = this.fd_filestat_get(fd);
 
             if (filestat) {
-                Atomics.store(func_sig_view_u64, 0, filestat.dev);
-                Atomics.store(func_sig_view_u64, 1, filestat.ino);
-                Atomics.store(func_sig_view_u8, 16, filestat.filetype);
-                Atomics.store(func_sig_view_u64, 3, filestat.nlink);
-                Atomics.store(func_sig_view_u64, 4, filestat.size);
-                Atomics.store(func_sig_view_u64, 5, filestat.atim);
-                Atomics.store(func_sig_view_u64, 6, filestat.mtim);
-                Atomics.store(func_sig_view_u64, 7, filestat.ctim);
+              Atomics.store(func_sig_view_u64, 0, filestat.dev);
+              Atomics.store(func_sig_view_u64, 1, filestat.ino);
+              Atomics.store(func_sig_view_u8, 16, filestat.filetype);
+              Atomics.store(func_sig_view_u64, 3, filestat.nlink);
+              Atomics.store(func_sig_view_u64, 4, filestat.size);
+              Atomics.store(func_sig_view_u64, 5, filestat.atim);
+              Atomics.store(func_sig_view_u64, 6, filestat.mtim);
+              Atomics.store(func_sig_view_u64, 7, filestat.ctim);
             }
 
             set_error(ret);
-            break switcher;
+            break;
           }
           // fd_filestat_set_size: (fd: u32, size: u64) => errno;
           case 15: {
@@ -456,7 +463,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const error = this.fd_filestat_set_size(fd, size);
 
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_filestat_set_times: (fd: u32, atim: u64, mtim: u64, fst_flags: u16) => errno;
           case 16: {
@@ -468,7 +475,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const error = this.fd_filestat_set_times(fd, atim, mtim, fst_flags);
 
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_pread: (fd: u32, iovs_ptr: pointer, iovs_len: u32, offset: u64) => [u32, data_ptr, errno];
           case 17: {
@@ -476,7 +483,9 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const iovs_ptr = Atomics.load(func_sig_view_u32, 2);
             const iovs_ptr_len = Atomics.load(func_sig_view_u32, 3);
             const offset = Atomics.load(func_sig_view_u64, 2);
-            const data = new Uint32Array(this.allocator.get_memory(iovs_ptr, iovs_ptr_len));
+            const data = new Uint32Array(
+              this.allocator.get_memory(iovs_ptr, iovs_ptr_len),
+            );
             this.allocator.free(iovs_ptr, iovs_ptr_len);
 
             const iovecs = new Array<wasi.Iovec>();
@@ -493,40 +502,58 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
               Atomics.store(func_sig_view_u32, 0, nread);
             }
             if (buffer8) {
-              await this.allocator.async_write(buffer8, this.fd_func_sig, fd * fd_func_sig_u32_size + 1);
+              await this.allocator.async_write(
+                buffer8,
+                this.fd_func_sig,
+                fd * fd_func_sig_u32_size + 1,
+              );
             }
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_prestat_get: (fd: u32) => [wasi.Prestat(u32 * 2)], errno];
           case 18: {
             const fd = Atomics.load(func_sig_view_u32, 1);
 
-            const [ prestat, ret ] = this.fd_prestat_get(fd);
+            const [prestat, ret] = this.fd_prestat_get(fd);
 
             // console.log("fd_prestat_get", prestat, ret);
 
             if (prestat) {
               Atomics.store(func_sig_view_u32, 0, prestat.tag);
-              Atomics.store(func_sig_view_u32, 1, prestat.inner.pr_name.byteLength);
+              Atomics.store(
+                func_sig_view_u32,
+                1,
+                prestat.inner.pr_name.byteLength,
+              );
             }
             set_error(ret);
-            break switcher;
+            break;
           }
           // fd_prestat_dir_name: (fd: u32, path_len: u32) => [path_ptr: pointer, path_len: u32, errno];
           case 19: {
             const fd = Atomics.load(func_sig_view_u32, 1);
             const path_len = Atomics.load(func_sig_view_u32, 2);
 
-            const [ prestat_dir_name, ret ] = this.fd_prestat_dir_name(fd, path_len);
+            const [prestat_dir_name, ret] = this.fd_prestat_dir_name(
+              fd,
+              path_len,
+            );
 
             // console.log("fd_prestat_dir_name: park: ", prestat_dir_name);
 
-            if (prestat_dir_name && (ret === wasi.ERRNO_SUCCESS || ret === wasi.ERRNO_NAMETOOLONG)) {
-              await this.allocator.async_write(prestat_dir_name, this.fd_func_sig, fd * fd_func_sig_u32_size);
+            if (
+              prestat_dir_name &&
+              (ret === wasi.ERRNO_SUCCESS || ret === wasi.ERRNO_NAMETOOLONG)
+            ) {
+              await this.allocator.async_write(
+                prestat_dir_name,
+                this.fd_func_sig,
+                fd * fd_func_sig_u32_size,
+              );
             }
             set_error(ret);
-            break switcher;
+            break;
           }
           // fd_pwrite: (fd: u32, write_data: pointer, write_data_len: u32, offset: u64) => [u32, errno];
           case 20: {
@@ -535,7 +562,9 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const write_data_len = Atomics.load(func_sig_view_u32, 3);
             const offset = Atomics.load(func_sig_view_u64, 2);
 
-            const data = new Uint8Array(this.allocator.get_memory(write_data_ptr, write_data_len));
+            const data = new Uint8Array(
+              this.allocator.get_memory(write_data_ptr, write_data_len),
+            );
             this.allocator.free(write_data_ptr, write_data_len);
 
             const [nwritten, error] = this.fd_pwrite(fd, data, offset);
@@ -544,7 +573,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
               Atomics.store(func_sig_view_u32, 0, nwritten);
             }
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_read: (fd: u32, iovs_ptr: pointer, iovs_len: u32) => [u32, data_ptr, errno];
           case 21: {
@@ -553,7 +582,9 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const iovs_ptr_len = Atomics.load(func_sig_view_u32, 3);
             // console.log("fd_read: park: iovs: Uint8Array", this.allocator.get_memory(iovs_ptr, iovs_ptr_len));
             // console.log("ptr_len", iovs_ptr_len);
-            const iovs = new Uint32Array(this.allocator.get_memory(iovs_ptr, iovs_ptr_len));
+            const iovs = new Uint32Array(
+              this.allocator.get_memory(iovs_ptr, iovs_ptr_len),
+            );
             this.allocator.free(iovs_ptr, iovs_ptr_len);
 
             // console.log("fd_read: park: iovs", iovs);
@@ -576,10 +607,14 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
               Atomics.store(func_sig_view_u32, 0, nread);
             }
             if (buffer8) {
-              await this.allocator.async_write(buffer8, this.fd_func_sig, fd * fd_func_sig_u32_size + 1);
+              await this.allocator.async_write(
+                buffer8,
+                this.fd_func_sig,
+                fd * fd_func_sig_u32_size + 1,
+              );
             }
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_readdir: (fd: u32, buf_len: u32, cookie: u64) => [buf_ptr: pointer, buf_len: u32, buf_used: u32, errno];
           case 22: {
@@ -587,22 +622,30 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const buf_len = Atomics.load(func_sig_view_u32, 2);
             const cookie = Atomics.load(func_sig_view_u64, 2);
 
-            const [[array, buf_used], error] = this.fd_readdir(fd, buf_len, cookie);
+            const [[array, buf_used], error] = this.fd_readdir(
+              fd,
+              buf_len,
+              cookie,
+            );
 
             if (array) {
-              await this.allocator.async_write(array, this.fd_func_sig, fd * fd_func_sig_u32_size);
+              await this.allocator.async_write(
+                array,
+                this.fd_func_sig,
+                fd * fd_func_sig_u32_size,
+              );
             }
             if (buf_used !== undefined) {
               Atomics.store(func_sig_view_u32, 2, buf_used);
             }
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_seek: (fd: u32, offset: i64, whence: u8) => [u64, errno];
           case 24: {
             const fd = Atomics.load(func_sig_view_u32, 1);
             const offset = Atomics.load(func_sig_view_u64, 1);
-            const whence = Atomics.load(func_sig_view_u8,16);
+            const whence = Atomics.load(func_sig_view_u8, 16);
 
             const [new_offset, error] = this.fd_seek(fd, offset, whence);
 
@@ -610,7 +653,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
               Atomics.store(func_sig_view_u64, 0, new_offset);
             }
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_sync: (fd: u32) => errno;
           case 25: {
@@ -619,7 +662,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const error = this.fd_sync(fd);
 
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_tell: (fd: u32) => [u64, errno];
           case 26: {
@@ -631,7 +674,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
               Atomics.store(func_sig_view_u64, 0, offset);
             }
             set_error(error);
-            break switcher;
+            break;
           }
           // fd_write: (fd: u32, write_data: pointer, write_data_len: u32) => [u32, errno];
           case 27: {
@@ -639,7 +682,9 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const write_data_ptr = Atomics.load(func_sig_view_u32, 2);
             const write_data_len = Atomics.load(func_sig_view_u32, 3);
 
-            const data = new Uint8Array(this.allocator.get_memory(write_data_ptr, write_data_len));
+            const data = new Uint8Array(
+              this.allocator.get_memory(write_data_ptr, write_data_len),
+            );
             this.allocator.free(write_data_ptr, write_data_len);
 
             // console.log("allocator", this.allocator);
@@ -654,7 +699,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
               Atomics.store(func_sig_view_u32, 0, nwritten);
             }
             set_error(error);
-            break switcher;
+            break;
           }
           // path_create_directory: (fd: u32, path_ptr: pointer, path_len: u32) => errno;
           case 28: {
@@ -662,14 +707,16 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const path_ptr = Atomics.load(func_sig_view_u32, 2);
             const path_len = Atomics.load(func_sig_view_u32, 3);
 
-            const path = new Uint8Array(this.allocator.get_memory(path_ptr, path_len));
+            const path = new Uint8Array(
+              this.allocator.get_memory(path_ptr, path_len),
+            );
             const path_str = new TextDecoder().decode(path);
             this.allocator.free(path_ptr, path_len);
 
             const error = this.path_create_directory(fd, path_str);
 
             set_error(error);
-            break switcher;
+            break;
           }
           // path_filestat_get: (fd: u32, flags: u32, path_ptr: pointer, path_len: u32) => [wasi.Filestat(u32 * 16), errno];
           case 29: {
@@ -678,7 +725,9 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const path_ptr = Atomics.load(func_sig_view_u32, 3);
             const path_len = Atomics.load(func_sig_view_u32, 4);
 
-            const path = new Uint8Array(this.allocator.get_memory(path_ptr, path_len));
+            const path = new Uint8Array(
+              this.allocator.get_memory(path_ptr, path_len),
+            );
             const path_str = new TextDecoder().decode(path);
             this.allocator.free(path_ptr, path_len);
 
@@ -687,7 +736,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             if (filestat) {
               Atomics.store(func_sig_view_u64, 0, filestat.dev);
               Atomics.store(func_sig_view_u64, 1, filestat.ino);
-              Atomics.store(func_sig_view_u8,16, filestat.filetype);
+              Atomics.store(func_sig_view_u8, 16, filestat.filetype);
               Atomics.store(func_sig_view_u64, 3, filestat.nlink);
               Atomics.store(func_sig_view_u64, 4, filestat.size);
               Atomics.store(func_sig_view_u64, 5, filestat.atim);
@@ -695,7 +744,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
               Atomics.store(func_sig_view_u64, 7, filestat.ctim);
             }
             set_error(ret);
-            break switcher;
+            break;
           }
           // path_filestat_set_times: (fd: u32, flags: u32, path_ptr: pointer, path_len: u32, atim: u64, mtim: u64, fst_flags: u16) => errno;
           case 30: {
@@ -707,14 +756,23 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const mtim = Atomics.load(func_sig_view_u64, 4);
             const fst_flags = Atomics.load(func_sig_view_u16, 12);
 
-            const path = new Uint8Array(this.allocator.get_memory(path_ptr, path_len));
+            const path = new Uint8Array(
+              this.allocator.get_memory(path_ptr, path_len),
+            );
             const path_str = new TextDecoder().decode(path);
             this.allocator.free(path_ptr, path_len);
 
-            const error = this.path_filestat_set_times(fd, flags, path_str, atim, mtim, fst_flags);
+            const error = this.path_filestat_set_times(
+              fd,
+              flags,
+              path_str,
+              atim,
+              mtim,
+              fst_flags,
+            );
 
             set_error(error);
-            break switcher;
+            break;
           }
           // path_link: (old_fd: u32, old_flags: u32, old_path_ptr: pointer, old_path_len: u32, new_fd: u32, new_path_ptr: pointer, new_path_len: u32) => errno;
           case 31: {
@@ -726,17 +784,27 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const new_path_ptr = Atomics.load(func_sig_view_u32, 6);
             const new_path_len = Atomics.load(func_sig_view_u32, 7);
 
-            const old_path = new Uint8Array(this.allocator.get_memory(old_path_ptr, old_path_len));
+            const old_path = new Uint8Array(
+              this.allocator.get_memory(old_path_ptr, old_path_len),
+            );
             const old_path_str = new TextDecoder().decode(old_path);
             this.allocator.free(old_path_ptr, old_path_len);
-            const new_path = new Uint8Array(this.allocator.get_memory(new_path_ptr, new_path_len));
+            const new_path = new Uint8Array(
+              this.allocator.get_memory(new_path_ptr, new_path_len),
+            );
             const new_path_str = new TextDecoder().decode(new_path);
             this.allocator.free(new_path_ptr, new_path_len);
 
-            const error = this.path_link(old_fd, old_flags, old_path_str, new_fd, new_path_str);
+            const error = this.path_link(
+              old_fd,
+              old_flags,
+              old_path_str,
+              new_fd,
+              new_path_str,
+            );
 
             set_error(error);
-            break switcher;
+            break;
           }
           // path_open: (fd: u32, dirflags: u32, path_ptr: pointer, path_len: u32, oflags: u32, fs_rights_base: u64, fs_rights_inheriting: u64, fdflags: u16) => [u32, errno];
           case 32: {
@@ -749,11 +817,21 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const fs_rights_inheriting = Atomics.load(func_sig_view_u64, 4);
             const fd_flags = Atomics.load(func_sig_view_u16, 20);
 
-            const path = new Uint8Array(this.allocator.get_memory(path_ptr, path_len));
+            const path = new Uint8Array(
+              this.allocator.get_memory(path_ptr, path_len),
+            );
             const path_str = new TextDecoder().decode(path);
             this.allocator.free(path_ptr, path_len);
 
-            const [opened_fd, error] = await this.path_open(fd, dirflags, path_str, oflags, fs_rights_base, fs_rights_inheriting, fd_flags);
+            const [opened_fd, error] = await this.path_open(
+              fd,
+              dirflags,
+              path_str,
+              oflags,
+              fs_rights_base,
+              fs_rights_inheriting,
+              fd_flags,
+            );
 
             // console.log("path_open: opend_fd", opened_fd, error);
 
@@ -761,7 +839,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
               Atomics.store(func_sig_view_u32, 0, opened_fd);
             }
             set_error(error);
-            break switcher;
+            break;
           }
           // path_readlink: (fd: u32, path_ptr: pointer, path_len: u32, buf_len: u32) => [buf_len: u32, data_ptr: pointer, data_len: u32, errno];
           case 33: {
@@ -770,18 +848,24 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const path_len = Atomics.load(func_sig_view_u32, 3);
             const buf_len = Atomics.load(func_sig_view_u32, 4);
 
-            const path = new Uint8Array(this.allocator.get_memory(path_ptr, path_len));
+            const path = new Uint8Array(
+              this.allocator.get_memory(path_ptr, path_len),
+            );
             const path_str = new TextDecoder().decode(path);
             this.allocator.free(path_ptr, path_len);
 
             const [buf, error] = this.path_readlink(fd, path_str, buf_len);
 
             if (buf) {
-              await this.allocator.async_write(buf, this.fd_func_sig, fd * fd_func_sig_u32_size + 1);
+              await this.allocator.async_write(
+                buf,
+                this.fd_func_sig,
+                fd * fd_func_sig_u32_size + 1,
+              );
               Atomics.store(func_sig_view_u32, 0, buf.byteLength);
             }
             set_error(error);
-            break switcher;
+            break;
           }
           // path_remove_directory: (fd: u32, path_ptr: pointer, path_len: u32) => errno;
           case 34: {
@@ -789,14 +873,16 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const path_ptr = Atomics.load(func_sig_view_u32, 2);
             const path_len = Atomics.load(func_sig_view_u32, 3);
 
-            const path = new Uint8Array(this.allocator.get_memory(path_ptr, path_len));
+            const path = new Uint8Array(
+              this.allocator.get_memory(path_ptr, path_len),
+            );
             const path_str = new TextDecoder().decode(path);
             this.allocator.free(path_ptr, path_len);
 
             const error = this.path_remove_directory(fd, path_str);
 
             set_error(error);
-            break switcher;
+            break;
           }
           // path_rename: (old_fd: u32, old_path_ptr: pointer, old_path_len: u32, new_fd: u32, new_path_ptr: pointer, new_path_len: u32) => errno;
           case 35: {
@@ -807,17 +893,26 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const new_path_ptr = Atomics.load(func_sig_view_u32, 5);
             const new_path_len = Atomics.load(func_sig_view_u32, 6);
 
-            const old_path = new Uint8Array(this.allocator.get_memory(old_path_ptr, old_path_len));
+            const old_path = new Uint8Array(
+              this.allocator.get_memory(old_path_ptr, old_path_len),
+            );
             const old_path_str = new TextDecoder().decode(old_path);
             this.allocator.free(old_path_ptr, old_path_len);
-            const new_path = new Uint8Array(this.allocator.get_memory(new_path_ptr, new_path_len));
+            const new_path = new Uint8Array(
+              this.allocator.get_memory(new_path_ptr, new_path_len),
+            );
             const new_path_str = new TextDecoder().decode(new_path);
             this.allocator.free(new_path_ptr, new_path_len);
 
-            const error = this.path_rename(fd, old_path_str, new_fd, new_path_str);
+            const error = this.path_rename(
+              fd,
+              old_path_str,
+              new_fd,
+              new_path_str,
+            );
 
             set_error(error);
-            break switcher;
+            break;
           }
           // path_symlink: (old_path_ptr: pointer, old_path_len: u32, fd: u32, new_path_ptr: pointer, new_path_len: u32) => errno;
           case 36: {
@@ -827,15 +922,19 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const new_path_ptr = Atomics.load(func_sig_view_u32, 4);
             const new_path_len = Atomics.load(func_sig_view_u32, 5);
 
-            const old_path = new Uint8Array(this.allocator.get_memory(old_path_ptr, old_path_len));
+            const old_path = new Uint8Array(
+              this.allocator.get_memory(old_path_ptr, old_path_len),
+            );
             const old_path_str = new TextDecoder().decode(old_path);
             this.allocator.free(old_path_ptr, old_path_len);
-            const new_path = new Uint8Array(this.allocator.get_memory(new_path_ptr, new_path_len));
+            const new_path = new Uint8Array(
+              this.allocator.get_memory(new_path_ptr, new_path_len),
+            );
             const new_path_str = new TextDecoder().decode(new_path);
             this.allocator.free(new_path_ptr, new_path_len);
 
             set_error(this.path_symlink(old_path_str, fd, new_path_str));
-            break switcher;
+            break;
           }
           // path_unlink_file: (fd: u32, path_ptr: pointer, path_len: u32) => errno;
           case 37: {
@@ -843,21 +942,25 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             const path_ptr = Atomics.load(func_sig_view_u32, 2);
             const path_len = Atomics.load(func_sig_view_u32, 3);
 
-            const path = new Uint8Array(this.allocator.get_memory(path_ptr, path_len));
+            const path = new Uint8Array(
+              this.allocator.get_memory(path_ptr, path_len),
+            );
             const path_str = new TextDecoder().decode(path);
             this.allocator.free(path_ptr, path_len);
 
             set_error(this.path_unlink_file(fd, path_str));
-            break switcher;
+            break;
           }
           default: {
-            throw new Error("Unknown function number: " + func_number);
+            throw new Error(`Unknown function number: ${func_number}`);
           }
         }
 
         const old_call_lock = Atomics.exchange(lock_view, 1, 0);
         if (old_call_lock !== 1) {
-          throw new Error("Call is already set: " + old_call_lock + "\nfunc: " + get_func_name_from_number(func_number) + "\nfd: " + fd_n);
+          throw new Error(
+            `Call is already set: ${old_call_lock}\nfunc: ${get_func_name_from_number(func_number)}\nfd: ${fd_n}`,
+          );
         }
 
         // console.log("called end: func: ", get_func_name_from_number(func_number), "fd: ", fd_n);
@@ -867,7 +970,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
           if (n === 0) {
             console.warn("notify number is 0. ref is late?");
           } else {
-            console.warn("notify number is not 1: " + n);
+            console.warn(`notify number is not 1: ${n}`);
           }
         }
 

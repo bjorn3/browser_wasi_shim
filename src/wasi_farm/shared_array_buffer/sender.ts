@@ -1,7 +1,7 @@
 export type ToRefSenderUseArrayBufferObject = {
   data_size: number;
   share_arrays_memory?: SharedArrayBuffer;
-}
+};
 
 // To ref sender abstract class
 export abstract class ToRefSenderUseArrayBuffer {
@@ -53,12 +53,10 @@ export abstract class ToRefSenderUseArrayBuffer {
     Atomics.store(view, 2, 12);
   }
 
-  protected static init_self_inner(
-    sl: ToRefSenderUseArrayBufferObject,
-  ): {
-    data_size: number,
-    max_share_arrays_memory: number,
-    share_arrays_memory: SharedArrayBuffer,
+  protected static init_self_inner(sl: ToRefSenderUseArrayBufferObject): {
+    data_size: number;
+    max_share_arrays_memory: number;
+    share_arrays_memory: SharedArrayBuffer;
   } {
     return {
       data_size: sl.data_size,
@@ -121,7 +119,7 @@ export abstract class ToRefSenderUseArrayBuffer {
     const used_len = Atomics.load(view, 2);
     const data_len = data.byteLength;
     if (data_len !== this.data_size) {
-      throw new Error("invalid data size: " + data_len + " !== " + this.data_size);
+      throw new Error(`invalid data size: ${data_len} !== ${this.data_size}`);
     }
     const new_used_len = used_len + data_len + 8 + targets.length * 4;
     if (new_used_len > this.share_arrays_memory.byteLength) {
@@ -135,7 +133,10 @@ export abstract class ToRefSenderUseArrayBuffer {
     header[1] = targets.length;
     header.set(targets, 2);
 
-    const data_view = new Uint32Array(this.share_arrays_memory, used_len + 8 + targets.length * 4);
+    const data_view = new Uint32Array(
+      this.share_arrays_memory,
+      used_len + 8 + targets.length * 4,
+    );
     data_view.set(data);
 
     // console.log("async_send send", targets, data);
@@ -145,9 +146,7 @@ export abstract class ToRefSenderUseArrayBuffer {
     this.release_lock();
   }
 
-  protected get_data(
-    id: number,
-  ): Array<Uint32Array> | undefined {
+  protected get_data(id: number): Array<Uint32Array> | undefined {
     const view = new Int32Array(this.share_arrays_memory);
     const data_num_tmp = Atomics.load(view, 1);
     if (data_num_tmp === 0) {
@@ -166,10 +165,18 @@ export abstract class ToRefSenderUseArrayBuffer {
       // console.log("this.share_arrays_memory", this.share_arrays_memory);
       const header = new Int32Array(this.share_arrays_memory, offset);
       const target_num = header[1];
-      const targets = new Int32Array(this.share_arrays_memory, offset + 8, target_num);
+      const targets = new Int32Array(
+        this.share_arrays_memory,
+        offset + 8,
+        target_num,
+      );
       const data_len = this.data_size;
       if (targets.includes(id)) {
-        const data = new Uint32Array(this.share_arrays_memory, offset + 8 + target_num * 4, data_len / 4);
+        const data = new Uint32Array(
+          this.share_arrays_memory,
+          offset + 8 + target_num * 4,
+          data_len / 4,
+        );
 
         // なぜかわからないが、上では正常に動作せず、以下のようにすると動作する
         // return_data.push(new Uint32Array(data));
@@ -185,7 +192,10 @@ export abstract class ToRefSenderUseArrayBuffer {
           const new_used_len = used_len - data_len - 8 - target_num * 4;
           Atomics.store(view, 2, new_used_len);
           const next_data_offset = offset + data_len + 8 + target_num * 4;
-          const next_tail = new Int32Array(this.share_arrays_memory, next_data_offset);
+          const next_tail = new Int32Array(
+            this.share_arrays_memory,
+            next_data_offset,
+          );
           const now_tail = new Int32Array(this.share_arrays_memory, offset);
           now_tail.set(next_tail);
           // console.log("new_used_len", new_used_len);
@@ -199,7 +209,7 @@ export abstract class ToRefSenderUseArrayBuffer {
     }
 
     if (offset !== Atomics.load(view, 2)) {
-      throw new Error("invalid offset: " + offset + " !== " + Atomics.load(view, 2));
+      throw new Error(`invalid offset: ${offset} !== ${Atomics.load(view, 2)}`);
     }
 
     this.release_lock();

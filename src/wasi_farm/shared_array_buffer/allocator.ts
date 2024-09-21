@@ -1,10 +1,10 @@
 // @ts-ignore
 // import { debug } from "../../debug.js";
-import "../polyfill.js";
+// import "../polyfill.js";
 
 export type AllocatorUseArrayBufferObject = {
   share_arrays_memory: SharedArrayBuffer;
-}
+};
 
 export class AllocatorUseArrayBuffer {
   // Pass a !Sized type
@@ -40,7 +40,9 @@ export class AllocatorUseArrayBuffer {
   // Since postMessage makes the class an object,
   // it must be able to receive and assign a SharedArrayBuffer.
   constructor(
-    share_arrays_memory: SharedArrayBuffer = new SharedArrayBuffer(10 * 1024 * 1024),
+    share_arrays_memory: SharedArrayBuffer = new SharedArrayBuffer(
+      10 * 1024 * 1024,
+    ),
   ) {
     this.share_arrays_memory = share_arrays_memory;
     const view = new Int32Array(this.share_arrays_memory);
@@ -51,9 +53,7 @@ export class AllocatorUseArrayBuffer {
 
   // Since postMessage converts classes to objects,
   // it must be able to convert objects to classes.
-  static init_self(
-    sl: AllocatorUseArrayBufferObject,
-  ): AllocatorUseArrayBuffer {
+  static init_self(sl: AllocatorUseArrayBufferObject): AllocatorUseArrayBuffer {
     return new AllocatorUseArrayBuffer(sl.share_arrays_memory);
   }
 
@@ -64,7 +64,7 @@ export class AllocatorUseArrayBuffer {
     // ptr, len
     // Pass I32Array ret_ptr
     ret_ptr: number,
-  ): Promise<void> {
+  ): Promise<[number, number]> {
     const view = new Int32Array(this.share_arrays_memory);
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -83,13 +83,13 @@ export class AllocatorUseArrayBuffer {
         continue;
       }
 
-      this.write_inner(data, memory, ret_ptr);
+      const ret = this.write_inner(data, memory, ret_ptr);
 
       // release lock
       Atomics.store(view, 0, 0);
       Atomics.notify(view, 0, 1);
 
-      break;
+      return ret;
     }
   }
 
@@ -153,7 +153,9 @@ export class AllocatorUseArrayBuffer {
       // extend memory
       // support from es2024
       // this.share_arrays_memory.grow(new_memory_len);
-      throw new Error("size is bigger than memory. \nTODO! fix memory limit. support big size another way.");
+      throw new Error(
+        "size is bigger than memory. \nTODO! fix memory limit. support big size another way.",
+      );
     }
 
     let data8: Uint8Array;
@@ -183,7 +185,7 @@ export class AllocatorUseArrayBuffer {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     pointer: number,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    len: number
+    len: number,
   ) {
     Atomics.sub(new Int32Array(this.share_arrays_memory), 1, 1);
 
@@ -191,10 +193,7 @@ export class AllocatorUseArrayBuffer {
   }
 
   // get memory from pointer and length
-  get_memory(
-    ptr: number,
-    len: number,
-  ): ArrayBuffer {
+  get_memory(ptr: number, len: number): ArrayBuffer {
     const data = new ArrayBuffer(len);
     const view = new Uint8Array(data);
     view.set(new Uint8Array(this.share_arrays_memory).slice(ptr, ptr + len));
@@ -203,12 +202,14 @@ export class AllocatorUseArrayBuffer {
 
   // Write again to the memory before releasing
   // Not used because the situation for using it does not exist.
-  use_defined_memory(
-    ptr: number,
-    len: number,
-    data: ArrayBufferLike,
-  ) {
+  use_defined_memory(ptr: number, len: number, data: ArrayBufferLike) {
     const memory = new Uint8Array(this.share_arrays_memory);
     memory.set(new Uint8Array(data).slice(0, len), ptr);
+  }
+
+  get_object(): AllocatorUseArrayBufferObject {
+    return {
+      share_arrays_memory: this.share_arrays_memory,
+    };
   }
 }
