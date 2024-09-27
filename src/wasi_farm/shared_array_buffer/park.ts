@@ -691,7 +691,7 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
 
             // console.log("fd_write: park: write_data", new TextDecoder().decode(data));
 
-            const [nwritten, error] = this.fd_write(fd, data);
+            const [nwritten, error] = await this.fd_write(fd, data);
 
             // console.log("fd_write: park: error", error);
 

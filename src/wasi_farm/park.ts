@@ -396,12 +396,19 @@ export abstract class WASIFarmPark {
     return [undefined, wasi.ERRNO_BADF];
   }
 
-  protected fd_write(
+  protected async fd_write(
     fd: number,
     write_data: Uint8Array,
-  ): [number | undefined, number] {
+  ): Promise<[number | undefined, number]> {
     if (this.fds[fd] !== undefined) {
-      const { ret, nwritten } = this.fds[fd].fd_write(write_data);
+      const fd_ret = this.fds[fd].fd_write(write_data);
+      let ret: number;
+      let nwritten: number;
+      if (fd_ret instanceof Promise) {
+        ({ ret, nwritten } = await fd_ret);
+      } else {
+        ({ ret, nwritten } = fd_ret);
+      }
       return [nwritten, ret];
     }
     return [undefined, wasi.ERRNO_BADF];

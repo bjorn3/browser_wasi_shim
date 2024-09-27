@@ -34,6 +34,9 @@
       writeln(data) {
         term.writeln(data);
       },
+      writeUtf8(data) {
+        term.writeUtf8(data);
+      },
     },
     "term"
   );
@@ -68,8 +71,6 @@
 
   // sleep 10000ms
   await new Promise((resolve) => setTimeout(resolve, 10000));
-
-  console.log("lock_worker terminated");
 </script>
 </body>
 </html>
