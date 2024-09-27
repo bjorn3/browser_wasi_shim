@@ -1,14 +1,20 @@
 const { promise, resolve } = Promise.withResolvers();
 import("../node_modules/@oligami/shared-object/dist/index.js").then(resolve);
+import { WASIFarmAnimal } from "../../dist/index.js";
 
 let tree;
 let term;
 let rustc;
+let rustc_with_lld;
 let clang;
 let llvm_tools;
 let wasm_ld;
 let std_out_keep;
 let std_err_keep;
+let root_dir;
+
+const blueText = "\x1b[34m";
+const resetText = "\x1b[0m";
 
 self.onmessage = async (e) => {
 	const { wasi_ref } = e.data;
@@ -16,6 +22,10 @@ self.onmessage = async (e) => {
 	const {
 		promise: depend_rustc_files_promise,
 		resolve: depend_rustc_files_resolve,
+	} = Promise.withResolvers();
+	const {
+		promise: depend_rustc_with_lld_promise,
+		resolve: depend_rustc_with_lld_resolve,
 	} = Promise.withResolvers();
 	const {
 		promise: depend_clang_files_promise,
@@ -31,6 +41,16 @@ self.onmessage = async (e) => {
 	});
 	depend_rustc_files_manage_worker.onmessage = (e) => {
 		depend_rustc_files_resolve(e.data);
+	};
+
+	const depend_rustc_with_lld_manage_worker = new Worker(
+		"depend_rustc_with_lld.js",
+		{
+			type: "module",
+		},
+	);
+	depend_rustc_with_lld_manage_worker.onmessage = (e) => {
+		depend_rustc_with_lld_resolve(e.data);
 	};
 
 	const depend_clang_files_manage_worker = new Worker("depend_clang_files.js", {
@@ -54,20 +74,29 @@ self.onmessage = async (e) => {
 		save_stdout_resolve(e.data);
 	};
 
-	const [depend_rustc_files, depend_clang_files, tmp_dir, save_stdout] =
-		await Promise.all([
-			depend_rustc_files_promise,
-			depend_clang_files_promise,
-			tmp_dir_promise,
-			save_stdout_promise,
-		]);
+	const [
+		depend_rustc_files,
+		depend_rustc_with_lld,
+		depend_clang_files,
+		tmp_dir,
+		save_stdout,
+	] = await Promise.all([
+		depend_rustc_files_promise,
+		depend_rustc_with_lld_promise,
+		depend_clang_files_promise,
+		tmp_dir_promise,
+		save_stdout_promise,
+	]);
 	const { wasi_ref: wasi_ref_depend_rustc_files } = depend_rustc_files;
+	const { wasi_ref: wasi_ref_depend_rustc_with_lld_files } =
+		depend_rustc_with_lld;
 	const { wasi_ref: wasi_ref_depend_clang_files } = depend_clang_files;
 	const { wasi_ref: wasi_ref_tmp_dir } = tmp_dir;
 	const { wasi_ref: wasi_ref_save_stdout } = save_stdout;
 
 	const wasi_refs = [
 		wasi_ref_depend_rustc_files,
+		wasi_ref_depend_rustc_with_lld_files,
 		wasi_ref_depend_clang_files,
 		wasi_ref_tmp_dir,
 		wasi_ref,
@@ -76,6 +105,8 @@ self.onmessage = async (e) => {
 	const { promise: tree_promise, resolve: tree_resolve } =
 		Promise.withResolvers();
 	const { promise: rustc_promise, resolve: rustc_resolve } =
+		Promise.withResolvers();
+	const { promise: rustc_with_lld_promise, resolve: rustc_with_lld_resolve } =
 		Promise.withResolvers();
 	const { promise: clang_promise, resolve: clang_resolve } =
 		Promise.withResolvers();
@@ -96,6 +127,14 @@ self.onmessage = async (e) => {
 		rustc_resolve(e.data);
 	};
 
+	const rustc_with_lld_worker = new Worker("rustc_with_lld.js", {
+		type: "module",
+	});
+	rustc_with_lld_worker.onmessage = (e) => {
+		console.log("rustc_with_lld onmessage");
+		rustc_with_lld_resolve(e.data);
+	};
+
 	const clang_worker = new Worker("clang.js", {
 		type: "module",
 	});
@@ -110,13 +149,21 @@ self.onmessage = async (e) => {
 	rustc_worker.postMessage({
 		wasi_refs: [wasi_ref_save_stdout, ...wasi_refs],
 	});
+	rustc_with_lld_worker.postMessage({
+		wasi_refs,
+	});
 	clang_worker.postMessage({
 		wasi_refs,
 	});
 
 	console.log("Waiting for tree and rustc to finish...");
 
-	await Promise.all([tree_promise, rustc_promise, clang_promise]);
+	await Promise.all([
+		tree_promise,
+		rustc_promise,
+		rustc_with_lld_promise,
+		clang_promise,
+	]);
 
 	console.log("Sending run message...");
 
@@ -128,6 +175,8 @@ self.onmessage = async (e) => {
 
 	rustc = new SharedObject.SharedObjectRef("rustc").proxy();
 
+	rustc_with_lld = new SharedObject.SharedObjectRef("rustc_with_lld").proxy();
+
 	clang = new SharedObject.SharedObjectRef("clang").proxy();
 
 	llvm_tools = new SharedObject.SharedObjectRef("llvm-tools").proxy();
@@ -138,38 +187,40 @@ self.onmessage = async (e) => {
 
 	std_err_keep = new SharedObject.SharedObjectRef("std_err_keep").proxy();
 
+	root_dir = new SharedObject.SharedObjectRef("root_dir").proxy();
+
 	// llvm-tools
-	await term.writeln("\n$ llvm-tools");
+	await term.writeln(`$${blueText} llvm-tools${resetText}`);
 	await llvm_tools();
 
 	// clang -h
-	await term.writeln("\n$ clang --help");
+	await term.writeln(`\n$${blueText} clang --help${resetText}`);
 	await clang("--help");
 
 	// clang -v
-	await term.writeln("\n$ clang -v");
+	await term.writeln(`\n$${blueText} clang -v${resetText}`);
 	await clang("-v");
 
 	// wasm-ld --help
-	await term.writeln("\n$ wasm-ld --help");
+	await term.writeln(`\n$${blueText} wasm-ld --help${resetText}`);
 	await wasm_ld("--help");
 
 	// wasm-ld -v
-	await term.writeln("\n$ wasm-ld -v");
+	await term.writeln(`\n$${blueText} wasm-ld -v${resetText}`);
 	await wasm_ld("-v");
 
 	// tree -h
-	await term.writeln("\n$ tree -h");
+	await term.writeln(`\n$${blueText} tree -h${resetText}`);
 	await tree("-h");
 
 	// tree /
-	await term.writeln("\n$ tree /");
+	await term.writeln(`\n$${blueText} tree /${resetText}`);
 	await tree("/");
 
 	// rustc -h
 	await std_out_keep.reset();
 	await std_err_keep.reset();
-	await term.writeln("\n$ rustc -h");
+	await term.writeln(`\n$${blueText} rustc -h${resetText}`);
 	await rustc("-h");
 	const rustc_help = await std_out_keep.get();
 	const rustc_help_err = await std_err_keep.get();
@@ -178,7 +229,7 @@ self.onmessage = async (e) => {
 
 	// rustc /hello.rs --sysroot /sysroot --target wasm32-wasip1-threads -Csave-temps --out-dir /tmp
 	await term.writeln(
-		"\n$ rustc /hello.rs --sysroot /sysroot --target wasm32-wasip1-threads -Csave-temps --out-dir /tmp",
+		`\n$${blueText} rustc /hello.rs --sysroot /sysroot --target wasm32-wasip1-threads -Csave-temps --out-dir /tmp${resetText}`,
 	);
 	try {
 		await std_out_keep.reset();
@@ -202,7 +253,7 @@ self.onmessage = async (e) => {
 	console.warn(err);
 
 	// tree /
-	await term.writeln("\n$ tree /");
+	await term.writeln(`\n$${blueText} tree /${resetText}`);
 	await tree("/");
 
 	// If the glob pattern is used,
@@ -229,14 +280,66 @@ self.onmessage = async (e) => {
 	});
 	console.log(lld_args);
 
-	await term.writeln(`\n$ wasm-ld ${lld_args.join(" ")}`);
+	await term.writeln(
+		`\n$${blueText} wasm-ld ${lld_args.join(" ")}${resetText}`,
+	);
 	try {
 		await wasm_ld(lld_args);
+	} catch (error) {
+		console.error(error);
+		const redText = "\x1b[31m";
+		const boldText = "\x1b[1m";
+
+		const message = `${boldText}${redText}Error: ${error.message}${resetText}\n`;
+		const stack = `${redText}Stack Trace: ${error.stack}${resetText}`;
+
+		await term.writeln(message + stack);
+	}
+
+	// tree /
+	await term.writeln(`\n$${blueText} tree /${resetText}`);
+	await tree("/");
+
+	// rustc_with_lld /hello.rs --sysroot /sysroot --target wasm32-wasip1
+	await term.writeln(
+		`\n$${blueText} rustc_with_lld /hello.rs --sysroot /sysroot-with-lld --target wasm32-wasip1${resetText}`,
+	);
+	try {
+		await rustc_with_lld(
+			"/hello.rs",
+			"--sysroot",
+			"/sysroot-with-lld",
+			"--target",
+			"wasm32-wasip1",
+		);
 	} catch (e) {
 		console.error(e);
 	}
 
 	// tree /
-	await term.writeln("\n$ tree /");
+	await term.writeln(`\n$${blueText} tree /${resetText}`);
 	await tree("/");
+
+	// run /hello.wasm
+	await term.writeln(`\n$${blueText} run /hello.wasm${resetText}`);
+	const created_wasm_buffer = await root_dir.get_file("hello.wasm");
+	const created_wasm = await WebAssembly.compile(created_wasm_buffer);
+	const wasi = new WASIFarmAnimal(
+		wasi_refs,
+		[], // args
+		[], // env
+		{
+			debug: false,
+		},
+	);
+
+	// Memory is rewritten at this time.
+	const inst = await WebAssembly.instantiate(created_wasm, {
+		wasi_snapshot_preview1: wasi.wasiImport,
+	});
+
+	wasi.start(inst);
+
+	// all done
+	await term.writeln(`\n$${blueText} All done!${resetText}`);
 };
