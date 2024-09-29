@@ -1,5 +1,6 @@
 import { debug } from "../debug.js";
 import type { Fd } from "../fd.js";
+import { File, OpenFile } from "../fs_mem.js";
 import * as wasi from "../wasi_defs.js";
 import type { WASIFarmRefObject } from "./ref.js";
 
@@ -588,5 +589,23 @@ export abstract class WASIFarmPark {
       return this.fds[fd].path_unlink_file(path);
     }
     return wasi.ERRNO_BADF;
+  }
+
+  protected async open_fd_with_buff(
+    fd: number,
+    buf: Uint8Array,
+  ): Promise<[number | undefined, number]> {
+    if (this.fds[fd] !== undefined) {
+      const fd_obj = new OpenFile(new File(buf));
+
+      const [resolve, opened_fd] = await this.get_new_fd();
+
+      this.fds[opened_fd] = fd_obj;
+
+      await resolve();
+
+      return [opened_fd, wasi.ERRNO_SUCCESS];
+    }
+    return [undefined, wasi.ERRNO_BADF];
   }
 }

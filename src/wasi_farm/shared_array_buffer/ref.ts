@@ -1400,4 +1400,38 @@ export class WASIFarmRefUseArrayBuffer extends WASIFarmRef {
 
     return error;
   }
+
+  open_fd_with_buff(fd: number, buf: Uint8Array): [number, number] {
+    this.lock_fd(fd);
+
+    const bytes_offset = fd * fd_func_sig_bytes;
+    const func_sig_view_u32 = new Uint32Array(this.fd_func_sig, bytes_offset);
+
+    Atomics.store(func_sig_view_u32, 0, 38);
+    Atomics.store(func_sig_view_u32, 1, fd);
+
+    const [ptr, len] = this.allocator.block_write(
+      buf,
+      this.fd_func_sig,
+      fd * fd_func_sig_u32_size + 2,
+    );
+
+    if (!this.call_fd_func(fd)) {
+      this.allocator.free(ptr, len);
+      this.release_fd(fd);
+      return [undefined, wasi.ERRNO_BADF];
+    }
+
+    const error = this.get_error(fd);
+
+    if (error === wasi.ERRNO_SUCCESS) {
+      const new_fd = Atomics.load(func_sig_view_u32, 0);
+      this.release_fd(fd);
+      return [new_fd, error];
+    }
+
+    this.release_fd(fd);
+
+    return [undefined, error];
+  }
 }

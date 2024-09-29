@@ -16,12 +16,27 @@ export class WASIFarmAnimal {
 
   private id_in_wasi_farm_ref: Array<number>;
 
+  private extend_imports: boolean;
+
   inst: { exports: { memory: WebAssembly.Memory } };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   wasiImport: { [key: string]: (...args: Array<any>) => unknown };
 
   wasiThreadImport: {
     "thread-spawn": (start_arg: number) => number;
+  };
+
+  extendImport: {
+    fetch_open: (
+      url_ptr: number,
+      url_len: number,
+      method_ptr: number,
+      method_len: number,
+      serialized_headers_ptr: number,
+      serialized_headers_len: number,
+      body_ptr: number,
+      body_len: number,
+    ) => number;
   };
 
   private can_array_buffer;
@@ -121,7 +136,11 @@ export class WASIFarmAnimal {
     const view = new Uint8Array(this.get_share_memory().buffer);
     view.fill(0);
 
-    await this.thread_spawner.async_start_on_thread(this.args, this.env);
+    await this.thread_spawner.async_start_on_thread(
+      this.args,
+      this.env,
+      this.extend_imports,
+    );
 
     const code = await this.thread_spawner.async_wait_done_or_error();
 
@@ -148,7 +167,11 @@ export class WASIFarmAnimal {
 
     console.log("block_start_on_thread: start");
 
-    this.thread_spawner.block_start_on_thread(this.args, this.env);
+    this.thread_spawner.block_start_on_thread(
+      this.args,
+      this.env,
+      this.extend_imports,
+    );
 
     console.log("block_start_on_thread: wait");
 
@@ -333,11 +356,14 @@ export class WASIFarmAnimal {
       can_thread_spawn?: boolean;
       thread_spawn_worker_url?: string;
       thread_spawn_wasm?: WebAssembly.Module;
+      extend_imports?: boolean;
     } = {},
     override_fd_maps?: Array<number[]>,
     thread_spawner?: ThreadSpawner,
   ) {
     debug.enable(options.debug);
+
+    this.extend_imports = options.extend_imports || false;
 
     let wasi_farm_refs_tmp: WASIFarmRefObject[];
     if (Array.isArray(wasi_farm_refs)) {
@@ -1280,10 +1306,155 @@ export class WASIFarmAnimal {
           self.args,
           self.env,
           self.fd_map,
+          self.extend_imports,
         );
 
         return thread_id;
       },
     };
+
+    if (this.extend_imports) {
+      this.extendImport = {
+        fetch_open: (
+          // i32
+          url_ptr: number,
+          // i32
+          url_len: number,
+          // i32
+          method_ptr: number,
+          // i32
+          method_len: number,
+          // i32
+          serialized_headers_ptr: number,
+          // i32
+          serialized_headers_len: number,
+          // i32
+          body_ptr: number,
+          // i32
+          body_len: number,
+          // fd
+        ): number => {
+          const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
+
+          const url_buf = buffer8.slice(url_ptr, url_ptr + url_len);
+          const method_buf = buffer8.slice(method_ptr, method_ptr + method_len);
+          const serialized_headers_buf = buffer8.slice(
+            serialized_headers_ptr,
+            serialized_headers_ptr + serialized_headers_len,
+          );
+          const body_buf = buffer8.slice(body_ptr, body_ptr + body_len);
+
+          const url = new TextDecoder().decode(url_buf);
+          const method = new TextDecoder().decode(method_buf);
+          const serialized_headers_txt = new TextDecoder().decode(
+            serialized_headers_buf,
+          );
+          const body = new TextDecoder().decode(body_buf);
+          console.log("fetch_open", url, method, serialized_headers_txt, body);
+          const serialized_headers = JSON.parse(serialized_headers_txt);
+          console.log("fetch_open", serialized_headers);
+
+          const request = new XMLHttpRequest();
+          // `false` makes the request synchronous
+          request.open(method, url, false);
+          request.timeout = 10000;
+
+          for (const [key, value] of Object.entries(serialized_headers)) {
+            request.setRequestHeader(key as string, value as string);
+          }
+
+          request.send(body);
+
+          const status = request.status;
+
+          const response_headers_str = request.getAllResponseHeaders();
+
+          console.log("fetch_open", status, response_headers_str);
+
+          // Vec<(String, String)>
+          const response_headers: Array<[string, string]> = [];
+
+          for (const line of response_headers_str.split("\r\n")) {
+            if (line === "") {
+              continue;
+            }
+            const [key, value] = line.split(": ");
+            response_headers.push([key, value]);
+          }
+
+          const response_body = request.response;
+
+          let response_body_u8: Uint8Array;
+
+          console.log(
+            "fetch_open",
+            status,
+            response_headers,
+            response_body,
+            request.responseType,
+          );
+
+          switch (request.responseType) {
+            case "arraybuffer":
+              response_body_u8 = new Uint8Array(response_body);
+              break;
+            case "text":
+              response_body_u8 = new TextEncoder().encode(
+                response_body as string,
+              );
+              break;
+            default:
+              throw new Error(
+                `unsupported response type: ${request.responseType}`,
+              );
+          }
+
+          const response_headers_u8 = new TextEncoder().encode(
+            JSON.stringify(response_headers),
+          );
+
+          // first byte is status le_bytes i32
+          // second byte is headers byte length i32
+          const ret_bytes: ArrayBuffer = new ArrayBuffer(
+            2 + response_headers_u8.length + response_body_u8.length,
+          );
+
+          const ret_bytes32 = new DataView(ret_bytes);
+          ret_bytes32.setInt32(0, status, true);
+          ret_bytes32.setInt32(4, response_headers_u8.length, true);
+
+          const ret_bytes8 = new Uint8Array(ret_bytes);
+          ret_bytes8.set(response_headers_u8, 8);
+          ret_bytes8.set(response_body_u8, 8 + response_headers_u8.length);
+
+          // open fd on first wasi_ref
+          // lock input fd and call create_fd on it
+          self.check_fds();
+          const [mapped_fd, wasi_farm_ref_n] = self.get_fd_and_wasi_ref_n(0);
+          if (mapped_fd === undefined || wasi_farm_ref_n === undefined) {
+            throw new Error("fetch_open: bad fd");
+          }
+          const wasi_farm_ref = self.wasi_farm_refs[wasi_farm_ref_n];
+          const [opened_fd, ret] = wasi_farm_ref.open_fd_with_buff(
+            mapped_fd,
+            ret_bytes8,
+          );
+          if (ret !== wasi.ERRNO_SUCCESS) {
+            throw new Error("fetch_open: failed to open fd");
+          }
+          if (opened_fd) {
+            if (self.fd_map.includes([opened_fd, wasi_farm_ref_n])) {
+              throw new Error("opened_fd already exists");
+            }
+            const mapped_opened_fd = self.map_new_fd_and_notify(
+              opened_fd,
+              wasi_farm_ref_n,
+            );
+            return mapped_opened_fd;
+          }
+          throw new Error("fetch_open: failed to open fd");
+        },
+      };
+    }
   }
 }

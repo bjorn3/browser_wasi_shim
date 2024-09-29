@@ -183,4 +183,8 @@ export abstract class WASIFarmRef {
     new_path: Uint8Array,
   ): number;
   abstract path_unlink_file(fd: number | undefined, path: Uint8Array): number;
+  abstract open_fd_with_buff(
+    fd: number | undefined,
+    buf: Uint8Array,
+  ): [number, number];
 }

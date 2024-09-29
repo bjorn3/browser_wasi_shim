@@ -951,6 +951,25 @@ export class WASIFarmParkUseArrayBuffer extends WASIFarmPark {
             set_error(this.path_unlink_file(fd, path_str));
             break;
           }
+          // open_fd_with_buff: (fd: u32, buf: pointer, buf_len: u32) => [u32, errno];
+          case 38: {
+            const fd = Atomics.load(func_sig_view_u32, 1);
+            const buf_ptr = Atomics.load(func_sig_view_u32, 2);
+            const buf_len = Atomics.load(func_sig_view_u32, 3);
+
+            const buf = new Uint8Array(
+              this.allocator.get_memory(buf_ptr, buf_len),
+            );
+            this.allocator.free(buf_ptr, buf_len);
+
+            const [opened_fd, error] = await this.open_fd_with_buff(fd, buf);
+
+            if (opened_fd !== undefined) {
+              Atomics.store(func_sig_view_u32, 0, opened_fd);
+            }
+            set_error(error);
+            break;
+          }
           default: {
             throw new Error(`Unknown function number: ${func_number}`);
           }

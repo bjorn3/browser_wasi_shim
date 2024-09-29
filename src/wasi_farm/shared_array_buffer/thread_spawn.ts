@@ -140,6 +140,7 @@ export class ThreadSpawner {
     args: Array<string>,
     env: Array<string>,
     fd_map: Array<[number, number]>,
+    extend_imports: boolean,
   ): number {
     const worker = this.worker_background_ref.new_worker(
       this.worker_url,
@@ -150,6 +151,7 @@ export class ThreadSpawner {
         args,
         env,
         fd_map,
+        extend_imports,
       },
     );
 
@@ -161,6 +163,7 @@ export class ThreadSpawner {
   async async_start_on_thread(
     args: Array<string>,
     env: Array<string>,
+    extend_imports: boolean,
   ): Promise<void> {
     if (!self.Worker.toString().includes("[native code]")) {
       if (self.Worker.toString().includes("function")) {
@@ -178,11 +181,16 @@ export class ThreadSpawner {
         this_is_start: true,
         args,
         env,
+        extend_imports,
       },
     );
   }
 
-  block_start_on_thread(args: Array<string>, env: Array<string>): void {
+  block_start_on_thread(
+    args: Array<string>,
+    env: Array<string>,
+    extend_imports: boolean,
+  ): void {
     if (!self.Worker.toString().includes("[native code]")) {
       if (self.Worker.toString().includes("function")) {
         console.warn("SubWorker(new Worker on Worker) is polyfilled maybe.");
@@ -199,6 +207,7 @@ export class ThreadSpawner {
         this_is_start: true,
         args,
         env,
+        extend_imports,
       },
     );
   }
@@ -279,8 +288,11 @@ export const thread_spawn_on_worker = async (msg: {
   args: Array<string>;
   env: Array<string>;
   fd_map: Array<number[]>;
+  extend_imports: boolean;
   this_is_start?: boolean;
 }): Promise<WASIFarmAnimal> => {
+  console.log("thread_spawn_on_worker", msg);
+
   if (msg.this_is_thread_spawn) {
     if (msg.this_is_start) {
       const thread_spawner = ThreadSpawner.init_self_with_worker_background_ref(
@@ -295,18 +307,41 @@ export const thread_spawn_on_worker = async (msg: {
         {
           can_thread_spawn: true,
           thread_spawn_worker_url: msg.sl_object.worker_url,
+          extend_imports: msg.extend_imports,
         },
         undefined,
         thread_spawner,
       );
 
-      const inst = await WebAssembly.instantiate(msg.thread_spawn_wasm, {
+      const imports: {
+        env: {
+          memory: WebAssembly.Memory;
+        };
+        wasi: {
+          "thread-spawn": (start_arg: number) => number;
+        };
+        wasi_snapshot_preview1: {
+          [key: string]: (...args: Array<unknown>) => unknown;
+        };
+        extend_imports?: {
+          [key: string]: (...args: Array<unknown>) => unknown;
+        };
+      } = {
         env: {
           memory: wasi.get_share_memory(),
         },
         wasi: wasi.wasiThreadImport,
         wasi_snapshot_preview1: wasi.wasiImport,
-      });
+      };
+
+      if (msg.extend_imports) {
+        imports.extend_imports = wasi.extendImport;
+      }
+
+      const inst = await WebAssembly.instantiate(
+        msg.thread_spawn_wasm,
+        imports,
+      );
 
       wasi.start(
         inst as unknown as {
@@ -364,18 +399,38 @@ export const thread_spawn_on_worker = async (msg: {
       {
         can_thread_spawn: true,
         thread_spawn_worker_url: sl_object.worker_url,
+        extend_imports: msg.extend_imports,
       },
       override_fd_map,
       thread_spawner,
     );
 
-    const inst = await WebAssembly.instantiate(thread_spawn_wasm, {
+    const imports: {
+      env: {
+        memory: WebAssembly.Memory;
+      };
+      wasi: {
+        "thread-spawn": (start_arg: number) => number;
+      };
+      wasi_snapshot_preview1: {
+        [key: string]: (...args: Array<unknown>) => unknown;
+      };
+      extend_imports?: {
+        [key: string]: (...args: Array<unknown>) => unknown;
+      };
+    } = {
       env: {
         memory: wasi.get_share_memory(),
       },
       wasi: wasi.wasiThreadImport,
       wasi_snapshot_preview1: wasi.wasiImport,
-    });
+    };
+
+    if (msg.extend_imports) {
+      imports.extend_imports = wasi.extendImport;
+    }
+
+    const inst = await WebAssembly.instantiate(thread_spawn_wasm, imports);
 
     globalThis.postMessage({
       msg: "ready",

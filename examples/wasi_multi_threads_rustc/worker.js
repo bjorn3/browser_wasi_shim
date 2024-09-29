@@ -9,6 +9,7 @@ let rustc_with_lld;
 let clang;
 let llvm_tools;
 let wasm_ld;
+let cargo;
 let std_out_keep;
 let std_err_keep;
 let root_dir;
@@ -110,6 +111,8 @@ self.onmessage = async (e) => {
 		Promise.withResolvers();
 	const { promise: clang_promise, resolve: clang_resolve } =
 		Promise.withResolvers();
+	const { promise: cargo_promise, resolve: cargo_resolve } =
+		Promise.withResolvers();
 
 	const tree_worker = new Worker("tree.js", {
 		type: "module",
@@ -143,6 +146,14 @@ self.onmessage = async (e) => {
 		clang_resolve(e.data);
 	};
 
+	const cargo_worker = new Worker("cargo.js", {
+		type: "module",
+	});
+	cargo_worker.onmessage = (e) => {
+		console.log("cargo onmessage");
+		cargo_resolve(e.data);
+	};
+
 	tree_worker.postMessage({
 		wasi_refs,
 	});
@@ -153,6 +164,9 @@ self.onmessage = async (e) => {
 		wasi_refs,
 	});
 	clang_worker.postMessage({
+		wasi_refs,
+	});
+	cargo_worker.postMessage({
 		wasi_refs,
 	});
 
@@ -188,6 +202,8 @@ self.onmessage = async (e) => {
 	std_err_keep = new SharedObject.SharedObjectRef("std_err_keep").proxy();
 
 	root_dir = new SharedObject.SharedObjectRef("root_dir").proxy();
+
+	cargo = new SharedObject.SharedObjectRef("cargo").proxy();
 
 	// llvm-tools
 	await term.writeln(`$${blueText} llvm-tools${resetText}`);
