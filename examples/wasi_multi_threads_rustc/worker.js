@@ -177,6 +177,7 @@ self.onmessage = async (e) => {
 		rustc_promise,
 		rustc_with_lld_promise,
 		clang_promise,
+		cargo_promise,
 	]);
 
 	console.log("Sending run message...");
@@ -204,6 +205,10 @@ self.onmessage = async (e) => {
 	root_dir = new SharedObject.SharedObjectRef("root_dir").proxy();
 
 	cargo = new SharedObject.SharedObjectRef("cargo").proxy();
+
+	// cargo -h
+	await term.writeln(`\n$${blueText} cargo -h${resetText}`);
+	await cargo("-h");
 
 	// llvm-tools
 	await term.writeln(`$${blueText} llvm-tools${resetText}`);

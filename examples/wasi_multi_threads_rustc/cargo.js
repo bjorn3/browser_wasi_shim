@@ -26,6 +26,7 @@ onmessage = async function (e) {
 					.href,
 				// thread_spawn_worker_url: "./thread_spawn.js",
 				thread_spawn_wasm: wasm,
+				extend_imports: true,
 			},
 		);
 
@@ -38,6 +39,7 @@ onmessage = async function (e) {
 		await promise;
 
 		shared = new SharedObject.SharedObject((...args) => {
+			console.log("wasi.start");
 			wasi.args = ["cargo", ...args];
 			wasi.block_start_on_thread();
 			console.log("wasi.start done");
