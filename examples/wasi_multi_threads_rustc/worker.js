@@ -13,6 +13,7 @@ let cargo;
 let std_out_keep;
 let std_err_keep;
 let root_dir;
+let cat;
 
 const blueText = "\x1b[34m";
 const resetText = "\x1b[0m";
@@ -113,6 +114,8 @@ self.onmessage = async (e) => {
 		Promise.withResolvers();
 	const { promise: cargo_promise, resolve: cargo_resolve } =
 		Promise.withResolvers();
+	const { promise: cat_promise, resolve: cat_resolve } =
+		Promise.withResolvers();
 
 	const tree_worker = new Worker("tree.js", {
 		type: "module",
@@ -154,6 +157,14 @@ self.onmessage = async (e) => {
 		cargo_resolve(e.data);
 	};
 
+	const cat_worker = new Worker("cat.js", {
+		type: "module",
+	});
+	cat_worker.onmessage = (e) => {
+		console.log("cat onmessage");
+		cat_resolve(e.data);
+	};
+
 	tree_worker.postMessage({
 		wasi_refs,
 	});
@@ -169,6 +180,9 @@ self.onmessage = async (e) => {
 	cargo_worker.postMessage({
 		wasi_refs,
 	});
+	cat_worker.postMessage({
+		wasi_refs,
+	});
 
 	console.log("Waiting for tree and rustc to finish...");
 
@@ -178,6 +192,7 @@ self.onmessage = async (e) => {
 		rustc_with_lld_promise,
 		clang_promise,
 		cargo_promise,
+		cat_promise,
 	]);
 
 	console.log("Sending run message...");
@@ -206,9 +221,43 @@ self.onmessage = async (e) => {
 
 	cargo = new SharedObject.SharedObjectRef("cargo").proxy();
 
+	cat = new SharedObject.SharedObjectRef("cat").proxy();
+
 	// cargo -h
 	await term.writeln(`\n$${blueText} cargo -h${resetText}`);
 	await cargo("-h");
+
+	// cargo new -h
+	await term.writeln(`\n$${blueText} cargo new -h${resetText}`);
+	await cargo("new", "-h");
+
+	// cargo new --bin
+	await term.writeln(`\n$${blueText} cargo new --bin helloworld${resetText}`);
+	await cargo("new", "--bin", "helloworld");
+
+	// cat /helloworld/src/main.rs
+	await term.writeln(`\n$${blueText} cat /helloworld/src/main.rs${resetText}`);
+	await cat("/helloworld/src/main.rs");
+
+	// cat /helloworld/Cargo.toml
+	await term.writeln(`\n$${blueText} cat /helloworld/Cargo.toml${resetText}`);
+	await cat("/helloworld/Cargo.toml");
+
+	// cargo run -h
+	await term.writeln(`\n$${blueText} cargo run -h${resetText}`);
+	await cargo("run", "-h");
+
+	// cargo run --manifest-path /helloworld/Cargo.toml --jobs 1 -- --sysroot /sysroot-with-lld
+	await term.writeln(
+		`\n$${blueText} cargo run --manifest-path /helloworld/Cargo.toml --jobs 1`,
+	);
+	await cargo(
+		"run",
+		"--manifest-path",
+		"/helloworld/Cargo.toml",
+		"--jobs",
+		"1",
+	);
 
 	// llvm-tools
 	await term.writeln(`$${blueText} llvm-tools${resetText}`);

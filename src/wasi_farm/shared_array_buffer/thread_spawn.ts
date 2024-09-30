@@ -14,6 +14,7 @@
 
 //  (import "wasi" "thread-spawn" (func $fimport$27 (param i32) (result i32)))
 
+import { strace } from "../../strace.js";
 import { WASIFarmAnimal } from "../animals.js";
 import type { WASIFarmRefObject } from "../ref.js";
 import type { WorkerBackgroundRefObject } from "./worker_background/index.js";
@@ -287,7 +288,7 @@ export const thread_spawn_on_worker = async (msg: {
   thread_spawn_wasm: WebAssembly.Module;
   args: Array<string>;
   env: Array<string>;
-  fd_map: Array<number[]>;
+  fd_map: [number, number][];
   extend_imports: boolean;
   this_is_start?: boolean;
 }): Promise<WASIFarmAnimal> => {
@@ -400,6 +401,7 @@ export const thread_spawn_on_worker = async (msg: {
         can_thread_spawn: true,
         thread_spawn_worker_url: sl_object.worker_url,
         extend_imports: msg.extend_imports,
+        hand_override_fd_map: msg.fd_map,
       },
       override_fd_map,
       thread_spawner,
@@ -423,7 +425,8 @@ export const thread_spawn_on_worker = async (msg: {
         memory: wasi.get_share_memory(),
       },
       wasi: wasi.wasiThreadImport,
-      wasi_snapshot_preview1: wasi.wasiImport,
+      // wasi_snapshot_preview1: wasi.wasiImport,
+      wasi_snapshot_preview1: strace(wasi.wasiImport, []),
     };
 
     if (msg.extend_imports) {

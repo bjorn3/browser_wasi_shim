@@ -18,7 +18,15 @@ onmessage = async function (e) {
 		wasi = new WASIFarmAnimal(
 			wasi_refs,
 			[], // args
-			["RUST_MIN_STACK=16777216"], // env
+			[
+				"RUST_MIN_STACK=16777216",
+				"HOME=/home/wasi",
+				"RUST_LOG=debug",
+				"RUST_BACKTRACE=full",
+				// This is made up of forced patches. Usually not available.
+				"RUSTC_SYSROOT=/sysroot-with-lld",
+				"RUSTFLAGS=",
+			], // env
 			{
 				// debug: true,
 				can_thread_spawn: true,

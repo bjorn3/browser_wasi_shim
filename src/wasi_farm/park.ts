@@ -572,10 +572,11 @@ export abstract class WASIFarmPark {
     return wasi.ERRNO_BADF;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected path_symlink(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     old_path: string,
     fd: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     new_path: string,
   ): number {
     if (this.fds[fd] !== undefined) {
