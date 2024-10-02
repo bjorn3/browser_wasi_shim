@@ -496,6 +496,11 @@ export abstract class WASIFarmPark {
         fs_rights_inheriting,
         fs_flags,
       );
+      console.log("path_open: park: ", path, "fd_obj", fd_obj, "ret", ret);
+
+      // print self dir path
+      console.log("path_open: self: ", this.fds[fd]);
+
       // console.log("path_open: park: ", ret, fd_obj);
       if (ret !== wasi.ERRNO_SUCCESS) {
         return [undefined, ret];
@@ -506,6 +511,8 @@ export abstract class WASIFarmPark {
       // console.log("path_open: park: ", path, "opened_fd" ,opened_fd);
 
       this.fds[opened_fd] = fd_obj;
+
+      console.log("path_open: park: ", path, "opened_fd", opened_fd);
 
       await resolve();
 

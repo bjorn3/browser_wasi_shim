@@ -37,8 +37,6 @@ export class WASIFarmAnimal {
       body_ptr: number,
       body_len: number,
     ) => number;
-
-    exchange_local_fd: (from_fd: number, to_fd: number) => number;
   };
 
   private can_array_buffer;
@@ -1465,18 +1463,6 @@ export class WASIFarmAnimal {
             return mapped_opened_fd;
           }
           throw new Error("fetch_open: failed to open fd");
-        },
-
-        exchange_local_fd: (from_fd: number, to_fd: number): number => {
-          this.check_fds();
-
-          console.log("exchange_local_fd", from_fd, to_fd);
-
-          const tmp = this.fd_map[from_fd];
-          this.fd_map[from_fd] = this.fd_map[to_fd];
-          this.fd_map[to_fd] = tmp;
-
-          return wasi.ERRNO_SUCCESS;
         },
       };
     }
