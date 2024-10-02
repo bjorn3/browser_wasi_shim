@@ -78,6 +78,7 @@ export abstract class Fd {
     mtim: bigint,
     fst_flags: number,
   ): number {
+    console.warn("path_filestat_set_times not implemented");
     return wasi.ERRNO_NOTSUP;
   }
   path_link(path: string, inode: Inode, allow_dir: boolean): number {
@@ -117,11 +118,18 @@ export abstract class Fd {
 }
 
 export abstract class Inode {
+  file_stat: wasi.Filestat;
+  constructor(file_stat: wasi.Filestat) {
+    this.file_stat = file_stat;
+  }
+
   abstract path_open(
     oflags: number,
     fs_rights_base: bigint,
     fd_flags: number,
   ): { ret: number; fd_obj: Fd | null };
 
-  abstract stat(): wasi.Filestat;
+  stat(): wasi.Filestat {
+    return this.file_stat;
+  }
 }

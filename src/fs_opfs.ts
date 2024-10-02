@@ -28,7 +28,9 @@ export class SyncOPFSFile extends Inode {
       readonly: boolean;
     }>,
   ) {
-    super();
+    super(
+      new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, BigInt(handle.getSize())),
+    );
     this.handle = handle;
     this.readonly = !!options?.readonly;
   }
@@ -55,10 +57,6 @@ export class SyncOPFSFile extends Inode {
 
   get size(): bigint {
     return BigInt(this.handle.getSize());
-  }
-
-  stat(): wasi.Filestat {
-    return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
   }
 }
 

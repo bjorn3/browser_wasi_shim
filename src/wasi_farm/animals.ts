@@ -882,26 +882,23 @@ export class WASIFarmAnimal {
       fd_renumber(fd: number, to: number) {
         self.check_fds();
 
-        const [mapped_fd, wasi_farm_ref_n] = self.get_fd_and_wasi_ref_n(fd);
         const [mapped_to, wasi_farm_ref_to] = self.get_fd_and_wasi_ref(to);
 
-        if (
-          mapped_fd === undefined ||
-          wasi_farm_ref_n === undefined ||
-          mapped_to === undefined ||
-          wasi_farm_ref_to === undefined
-        ) {
-          return wasi.ERRNO_BADF;
+        if (mapped_to !== undefined && wasi_farm_ref_to !== undefined) {
+          const ret = wasi_farm_ref_to.fd_close(mapped_to);
+          self.check_fds();
+          if (ret !== wasi.ERRNO_SUCCESS) {
+            return ret;
+          }
         }
 
-        const ret = wasi_farm_ref_to.fd_close(mapped_to);
-        self.check_fds();
-
-        if (ret !== wasi.ERRNO_SUCCESS) {
-          return ret;
+        if (self.fd_map[to]) {
+          throw new Error("fd is already mapped");
         }
 
-        self.map_set_fd_and_notify(mapped_fd, wasi_farm_ref_n, to);
+        self.fd_map[to] = self.fd_map[fd];
+
+        self.fd_map[fd] = undefined;
 
         return wasi.ERRNO_SUCCESS;
       },
@@ -1181,7 +1178,12 @@ export class WASIFarmAnimal {
         new_path_ptr: number,
         new_path_len: number,
       ) {
+        if (old_fd === new_fd) {
+          return wasi.ERRNO_SUCCESS;
+        }
+        console.log("path_rename", old_fd, new_fd);
         self.check_fds();
+        console.log("path_rename", old_fd, new_fd);
         const [mapped_old_fd, wasi_farm_ref] = self.get_fd_and_wasi_ref(old_fd);
         const [mapped_new_fd, wasi_farm_ref_new] =
           self.get_fd_and_wasi_ref(new_fd);
@@ -1342,6 +1344,8 @@ export class WASIFarmAnimal {
           body_len: number,
           // fd
         ): number => {
+          console.log("fetch_open", url_ptr, url_len, method_ptr, method_len);
+
           const buffer8 = new Uint8Array(self.inst.exports.memory.buffer);
 
           const url_buf = buffer8.slice(url_ptr, url_ptr + url_len);

@@ -119,6 +119,16 @@ export class OpenFile extends Fd {
   fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
     return { ret: 0, filestat: this.file.stat() };
   }
+
+  fd_filestat_set_times(atim: bigint, mtim: bigint, fst_flags: number): number {
+    if (fst_flags & wasi.FSTFLAGS_ATIM) {
+      this.file.file_stat.atim = atim;
+    }
+    if (fst_flags & wasi.FSTFLAGS_MTIM) {
+      this.file.file_stat.mtim = mtim;
+    }
+    return wasi.ERRNO_SUCCESS;
+  }
 }
 
 export class OpenDirectory extends Fd {
@@ -197,6 +207,31 @@ export class OpenDirectory extends Fd {
     }
 
     return { ret: 0, filestat: entry.stat() };
+  }
+
+  path_filestat_set_times(
+    flags: number,
+    path_str: string,
+    atim: bigint,
+    mtim: bigint,
+    fst_flags: number,
+  ): number {
+    const { ret: path_err, path } = Path.from(path_str);
+    if (path == null) {
+      return path_err;
+    }
+
+    const { ret, entry } = this.dir.get_entry_for_path(path);
+    if (entry == null) {
+      return ret;
+    }
+
+    if (fst_flags & wasi.FSTFLAGS_ATIM) {
+      entry.file_stat.atim = atim;
+      entry.file_stat.mtim = mtim;
+    }
+
+    return wasi.ERRNO_SUCCESS;
   }
 
   path_lookup(
@@ -471,7 +506,12 @@ export class File extends Inode {
       readonly: boolean;
     }>,
   ) {
-    super();
+    super(
+      new wasi.Filestat(
+        wasi.FILETYPE_REGULAR_FILE,
+        BigInt(new Uint8Array(data).byteLength),
+      ),
+    );
     this.data = new Uint8Array(data);
     this.readonly = !!options?.readonly;
   }
@@ -496,12 +536,20 @@ export class File extends Inode {
     return { ret: wasi.ERRNO_SUCCESS, fd_obj: file };
   }
 
-  get size(): bigint {
-    return BigInt(this.data.byteLength);
+  path_filestat_set_times(
+    flags: number,
+    path_str: string,
+    atim: bigint,
+    mtim: bigint,
+    fst_flags: number,
+  ): number {
+    this.file_stat.atim = atim;
+    this.file_stat.mtim = mtim;
+    return wasi.ERRNO_SUCCESS;
   }
 
-  stat(): wasi.Filestat {
-    return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
+  get size(): bigint {
+    return BigInt(this.data.byteLength);
   }
 }
 
@@ -549,7 +597,7 @@ export class Directory extends Inode {
   contents: Map<string, Inode>;
 
   constructor(contents: Map<string, Inode> | [string, Inode][]) {
-    super();
+    super(new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0n));
     if (contents instanceof Array) {
       this.contents = new Map(contents);
     } else {
@@ -562,10 +610,6 @@ export class Directory extends Inode {
     return { ret: wasi.ERRNO_SUCCESS, fd_obj: new OpenDirectory(this) };
   }
 
-  stat(): wasi.Filestat {
-    return new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0n);
-  }
-
   get_entry_for_path(path: Path): { ret: number; entry: Inode | null } {
     let entry: Inode = this;
     for (const component of path.parts) {
@@ -576,7 +620,7 @@ export class Directory extends Inode {
       if (child !== undefined) {
         entry = child;
       } else {
-        debug.log(component);
+        debug.log("no such entry", component);
         return { ret: wasi.ERRNO_NOENT, entry: null };
       }
     }
