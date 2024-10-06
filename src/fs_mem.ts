@@ -128,7 +128,7 @@ export class OpenDirectory extends Fd {
     super();
     this.dir = dir;
   }
-  OpenDirectory;
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   fd_seek(offset: bigint, whence: number): { ret: number; offset: bigint } {
     return { ret: wasi.ERRNO_BADF, offset: 0n };

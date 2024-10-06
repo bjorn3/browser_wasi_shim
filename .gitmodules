@@ -8,4 +8,4 @@
 [submodule "examples/wasi_multi_threads_rustc/rust_wasm"]
 	path = examples/wasi_multi_threads_rustc/rust_wasm
 	url = https://github.com/oligamiq/rust_wasm
-  sharrow = true
+	sharrow = true

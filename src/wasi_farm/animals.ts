@@ -121,7 +121,11 @@ export class WASIFarmAnimal {
     const view = new Uint8Array(this.get_share_memory().buffer);
     view.fill(0);
 
-    await this.thread_spawner.async_start_on_thread(this.args, this.env);
+    await this.thread_spawner.async_start_on_thread(
+      this.args,
+      this.env,
+      this.fd_map,
+    );
 
     const code = await this.thread_spawner.async_wait_done_or_error();
 
@@ -148,7 +152,7 @@ export class WASIFarmAnimal {
 
     console.log("block_start_on_thread: start");
 
-    this.thread_spawner.block_start_on_thread(this.args, this.env);
+    this.thread_spawner.block_start_on_thread(this.args, this.env, this.fd_map);
 
     console.log("block_start_on_thread: wait");
 
@@ -303,7 +307,7 @@ export class WASIFarmAnimal {
     if (rm_fds.length > 0) {
       for (let i = 0; i < this.fd_map.length; i++) {
         const fd_and_wasi_ref_n = this.fd_map[i];
-        if (fd_and_wasi_ref_n === undefined) {
+        if (!fd_and_wasi_ref_n) {
           continue;
         }
         const [fd, wasi_ref_n] = fd_and_wasi_ref_n;
@@ -333,6 +337,7 @@ export class WASIFarmAnimal {
       can_thread_spawn?: boolean;
       thread_spawn_worker_url?: string;
       thread_spawn_wasm?: WebAssembly.Module;
+      hand_override_fd_map?: Array<[number, number]>;
     } = {},
     override_fd_maps?: Array<number[]>,
     thread_spawner?: ThreadSpawner,
@@ -400,6 +405,10 @@ export class WASIFarmAnimal {
     }
 
     this.mapping_fds(this.wasi_farm_refs, override_fd_maps);
+
+    if (options.hand_override_fd_map) {
+      this.fd_map = options.hand_override_fd_map;
+    }
 
     // console.log("this.fd_map", this.fd_map);
 
@@ -848,26 +857,23 @@ export class WASIFarmAnimal {
       fd_renumber(fd: number, to: number) {
         self.check_fds();
 
-        const [mapped_fd, wasi_farm_ref_n] = self.get_fd_and_wasi_ref_n(fd);
         const [mapped_to, wasi_farm_ref_to] = self.get_fd_and_wasi_ref(to);
 
-        if (
-          mapped_fd === undefined ||
-          wasi_farm_ref_n === undefined ||
-          mapped_to === undefined ||
-          wasi_farm_ref_to === undefined
-        ) {
-          return wasi.ERRNO_BADF;
+        if (mapped_to !== undefined && wasi_farm_ref_to !== undefined) {
+          const ret = wasi_farm_ref_to.fd_close(mapped_to);
+          self.check_fds();
+          if (ret !== wasi.ERRNO_SUCCESS) {
+            return ret;
+          }
         }
 
-        const ret = wasi_farm_ref_to.fd_close(mapped_to);
-        self.check_fds();
-
-        if (ret !== wasi.ERRNO_SUCCESS) {
-          return ret;
+        if (self.fd_map[to]) {
+          throw new Error("fd is already mapped");
         }
 
-        self.map_set_fd_and_notify(mapped_fd, wasi_farm_ref_n, to);
+        self.fd_map[to] = self.fd_map[fd];
+
+        self.fd_map[fd] = undefined;
 
         return wasi.ERRNO_SUCCESS;
       },
@@ -1147,6 +1153,9 @@ export class WASIFarmAnimal {
         new_path_ptr: number,
         new_path_len: number,
       ) {
+        if (old_fd === new_fd) {
+          return wasi.ERRNO_SUCCESS;
+        }
         self.check_fds();
         const [mapped_old_fd, wasi_farm_ref] = self.get_fd_and_wasi_ref(old_fd);
         const [mapped_new_fd, wasi_farm_ref_new] =

@@ -111,8 +111,9 @@ export class ThreadSpawner {
         worker_background_ref_object: this.worker_background_ref_object,
       });
     } else {
+      this.worker_background_ref_object = worker_background_ref_object;
       this.worker_background_ref = WorkerBackgroundRef.init_self(
-        worker_background_ref_object,
+        this.worker_background_ref_object,
       );
     }
   }
@@ -161,6 +162,7 @@ export class ThreadSpawner {
   async async_start_on_thread(
     args: Array<string>,
     env: Array<string>,
+    fd_map: Array<[number, number]>,
   ): Promise<void> {
     if (!self.Worker.toString().includes("[native code]")) {
       if (self.Worker.toString().includes("function")) {
@@ -178,11 +180,16 @@ export class ThreadSpawner {
         this_is_start: true,
         args,
         env,
+        fd_map,
       },
     );
   }
 
-  block_start_on_thread(args: Array<string>, env: Array<string>): void {
+  block_start_on_thread(
+    args: Array<string>,
+    env: Array<string>,
+    fd_map: Array<[number, number]>,
+  ): void {
     if (!self.Worker.toString().includes("[native code]")) {
       if (self.Worker.toString().includes("function")) {
         console.warn("SubWorker(new Worker on Worker) is polyfilled maybe.");
@@ -199,6 +206,7 @@ export class ThreadSpawner {
         this_is_start: true,
         args,
         env,
+        fd_map,
       },
     );
   }
@@ -278,29 +286,56 @@ export const thread_spawn_on_worker = async (msg: {
   thread_spawn_wasm: WebAssembly.Module;
   args: Array<string>;
   env: Array<string>;
-  fd_map: Array<number[]>;
+  fd_map: [number, number][];
   this_is_start?: boolean;
 }): Promise<WASIFarmAnimal> => {
   if (msg.this_is_thread_spawn) {
-    if (msg.this_is_start) {
-      const thread_spawner = ThreadSpawner.init_self_with_worker_background_ref(
-        msg.sl_object,
-        msg.worker_background_ref,
-      );
+    const {
+      sl_object,
+      fd_map,
+      worker_background_ref,
+      thread_spawn_wasm,
+      args,
+      env,
+    } = msg;
 
+    const override_fd_map: Array<number[]> = new Array(
+      sl_object.wasi_farm_refs_object.length,
+    );
+
+    // Possibly null (undefined)
+    for (const fd_and_wasi_ref_n of fd_map) {
+      // biome-ignore lint/suspicious/noDoubleEquals: <explanation>
+      if (fd_and_wasi_ref_n == undefined) {
+        continue;
+      }
+      const [fd, wasi_ref_n] = fd_and_wasi_ref_n;
+      if (override_fd_map[wasi_ref_n] === undefined) {
+        override_fd_map[wasi_ref_n] = [];
+      }
+      override_fd_map[wasi_ref_n].push(fd);
+    }
+
+    const thread_spawner = ThreadSpawner.init_self_with_worker_background_ref(
+      sl_object,
+      worker_background_ref,
+    );
+
+    if (msg.this_is_start) {
       const wasi = new WASIFarmAnimal(
-        msg.sl_object.wasi_farm_refs_object,
-        msg.args,
-        msg.env,
+        sl_object.wasi_farm_refs_object,
+        args,
+        env,
         {
           can_thread_spawn: true,
-          thread_spawn_worker_url: msg.sl_object.worker_url,
+          thread_spawn_worker_url: sl_object.worker_url,
+          hand_override_fd_map: fd_map,
         },
-        undefined,
+        override_fd_map,
         thread_spawner,
       );
 
-      const inst = await WebAssembly.instantiate(msg.thread_spawn_wasm, {
+      const inst = await WebAssembly.instantiate(thread_spawn_wasm, {
         env: {
           memory: wasi.get_share_memory(),
         },
@@ -324,38 +359,9 @@ export const thread_spawn_on_worker = async (msg: {
       return wasi;
     }
 
-    const {
-      worker_id: thread_id,
-      start_arg,
-      args,
-      env,
-      sl_object,
-      thread_spawn_wasm,
-    } = msg;
+    const { worker_id: thread_id, start_arg } = msg;
 
     console.log(`thread_spawn worker ${thread_id} start`);
-
-    const thread_spawner = ThreadSpawner.init_self_with_worker_background_ref(
-      sl_object,
-      msg.worker_background_ref,
-    );
-
-    const override_fd_map: Array<number[]> = new Array(
-      sl_object.wasi_farm_refs_object.length,
-    );
-
-    // Possibly null (undefined)
-    for (const fd_and_wasi_ref_n of msg.fd_map) {
-      // biome-ignore lint/suspicious/noDoubleEquals: <explanation>
-      if (fd_and_wasi_ref_n == undefined) {
-        continue;
-      }
-      const [fd, wasi_ref_n] = fd_and_wasi_ref_n;
-      if (override_fd_map[wasi_ref_n] === undefined) {
-        override_fd_map[wasi_ref_n] = [];
-      }
-      override_fd_map[wasi_ref_n].push(fd);
-    }
 
     const wasi = new WASIFarmAnimal(
       sl_object.wasi_farm_refs_object,
@@ -364,6 +370,7 @@ export const thread_spawn_on_worker = async (msg: {
       {
         can_thread_spawn: true,
         thread_spawn_worker_url: sl_object.worker_url,
+        hand_override_fd_map: fd_map,
       },
       override_fd_map,
       thread_spawner,

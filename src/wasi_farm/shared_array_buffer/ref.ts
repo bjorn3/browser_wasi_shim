@@ -175,6 +175,10 @@ export class WASIFarmRefUseArrayBuffer extends WASIFarmRef {
 
   private lock_double_fd(fd1: number, fd2: number) {
     // console.log("lock_double_fd", fd1, fd2);
+    if (fd1 === fd2) {
+      this.lock_fd(fd1);
+      return;
+    }
     const view = new Int32Array(this.lock_fds);
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -213,6 +217,10 @@ export class WASIFarmRefUseArrayBuffer extends WASIFarmRef {
 
   private release_double_fd(fd1: number, fd2: number) {
     // console.log("release_double_fd", fd1, fd2);
+    if (fd1 === fd2) {
+      this.release_fd(fd1);
+      return;
+    }
     const view = new Int32Array(this.lock_fds);
     Atomics.store(view, fd1 * 3, 0);
     Atomics.notify(view, fd1 * 3, 1);
