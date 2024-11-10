@@ -3,7 +3,7 @@
 > [!WARNING]
 > The code in this directory is less production ready than the main browser_wasi_shim code.
 
-This project is implement threads on browser_wasi_shim
+This project implement threads on browser_wasi_shim
 
 # Features
 - [x] thread creation
