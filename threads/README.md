@@ -2,6 +2,10 @@
 
 > [!WARNING]
 > The code in this directory is less production ready than the main browser_wasi_shim code.
+> This code requires `SharedArrayBuffer`, `waitAsync` and `Atomics` to be enabled in the browser, so it may not work in all browsers.
+> For example, Firefox failed to run the demo in this directory.
+> Chrome worked fine.
+> This library require `cross-origin isolation` to be enabled in the browser.
 
 This project implement threads on browser_wasi_shim
 
