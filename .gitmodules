@@ -5,3 +5,7 @@
 	path = test/wasi-testsuite
 	url = https://github.com/WebAssembly/wasi-testsuite
 	branch = prod/testsuite-base
+[submodule "threads/examples/wasi_multi_threads_rustc/rust_wasm"]
+	path = threads/examples/wasi_multi_threads_rustc/rust_wasm
+	url = https://github.com/oligamiq/rust_wasm
+	sharrow = true

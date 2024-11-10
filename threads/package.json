@@ -1,0 +1,74 @@
+{
+  "name": "@oligami/browser_wasi_shim-threads",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run worker && vite build",
+    "prepare": "npm run build",
+    "fmt": "biome format --write .",
+    "lint": "biome lint src examples import-module-test",
+    "check": "biome check && tsc --noEmit",
+    "worker": "spack --config ./src/shared_array_buffer/worker_background/spack.config.cjs && node src/shared_array_buffer/worker_background/minify.js",
+    "watch": "npm-watch worker"
+  },
+  "watch": {
+    "worker": "src/shared_array_buffer/worker_background/*.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.3",
+    "@swc/cli": "^0.4.0",
+    "@swc/core": "^1.7.28",
+    "better-typescript-lib": "^2.8.0",
+    "npm-watch": "^0.13.0",
+    "typescript": "^5.6.2",
+    "unplugin-swc": "^1.5.1",
+    "vite": "^5.4.8",
+    "vite-plugin-dts": "^4.2.3"
+  },
+  "dependencies": {
+    "@bjorn3/browser_wasi_shim": "^0.3.0",
+    "@oligami/browser_wasi_shim-threads": "file:"
+  },
+  "peerDependencies": {
+    "@bjorn3/browser_wasi_shim": "^0.3.0"
+  },
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "oligami <nziq53@gmail.com> (https://github.com/oligamiq)",
+  "license": "MIT OR Apache-2.0",
+  "description": "A pure javascript shim for WASI with support for threads",
+  "homepage": "https://github.com/bjorn3/browser_wasi_shim/tree/main/threads#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bjorn3/browser_wasi_shim.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bjorn3/browser_wasi_shim/issues"
+  },
+  "main": "./dist/browser-wasi-shim-threads.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/browser-wasi-shim-threads.es.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/browser-wasi-shim-threads.cjs.js"
+      },
+      "node": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/browser-wasi-shim-threads.cjs.js"
+      },
+      "types": "./dist/index.d.ts",
+      "default": "./dist/browser-wasi-shim-threads.es.js"
+    }
+  },
+  "files": ["dist", "src"],
+  "module": "dist/browser-wasi-shim-threads.es.js",
+  "keywords": ["wasi", "webassembly", "threads", "worker", "webworker"]
+}

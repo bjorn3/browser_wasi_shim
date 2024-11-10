@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@oligami/shared-object": "^0.1.1",
+    "@xterm/xterm": "^5.5",
+    "xterm-addon-fit": "^0.8.0",
+    "@bjorn3/browser_wasi_shim": "^0.3.0"
+  }
+}

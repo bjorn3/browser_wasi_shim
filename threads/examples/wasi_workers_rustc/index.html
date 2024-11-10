@@ -1,0 +1,31 @@
+<!--
+
+See https://github.com/bjorn3/browser_wasi_shim/pull/28 for instructions on how to use this example.
+
+-->
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    body {
+        margin: 0;
+    }
+    p {
+        margin: 10px;
+    }
+</style>
+</head>
+<body>
+<div id="terminal"></div>
+<div id="downloads"></div>
+<p id="note">
+  Note: the failure to invoke the linker at the end is expected.
+  WASI doesn't have a way to invoke external processes and rustc doesn't have a builtin linker.
+  This demo highlights how far `rustc` can get on this polyfill before failing due to other reasons.
+</p>
+<script type="module" src="./index.ts"></script>
+</script>
+</body>
+</html>
