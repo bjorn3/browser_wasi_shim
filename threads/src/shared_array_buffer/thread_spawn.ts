@@ -343,14 +343,23 @@ export const thread_spawn_on_worker = async (msg: {
         wasi_snapshot_preview1: wasi.wasiImport,
       });
 
-      wasi.start(
-        inst as unknown as {
-          exports: {
-            memory: WebAssembly.Memory;
-            _start: () => unknown;
-          };
-        },
-      );
+      try {
+        wasi.start(
+          inst as unknown as {
+            exports: {
+              memory: WebAssembly.Memory;
+              _start: () => unknown;
+            };
+          },
+        );
+      } catch (e) {
+        globalThis.postMessage({
+          msg: "error",
+          error: e,
+        });
+
+        return wasi;
+      }
 
       globalThis.postMessage({
         msg: "done",

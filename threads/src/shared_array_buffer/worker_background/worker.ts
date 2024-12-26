@@ -252,6 +252,61 @@ class WorkerBackground<T> {
 
                 console.log("start worker done so terminate");
               }
+
+              if (msg === "error") {
+                let n = 0;
+                for (const worker of this.workers) {
+                  if (worker !== undefined) {
+                    worker.terminate();
+                    console.warn(
+                      `wasi throw error but worker exists, terminate ${n}`,
+                    );
+                  }
+                  n++;
+                }
+                if (this.start_worker !== undefined) {
+                  this.start_worker.terminate();
+                  console.warn(
+                    "wasi throw error but wasi exists, terminate start worker",
+                  );
+                }
+
+                this.workers = [undefined];
+                this.start_worker = undefined;
+
+                const error = e.data.error;
+
+                const notify_view = new Int32Array(this.lock, 8);
+
+                const serialized_error = Serializer.serialize(error);
+
+                const [ptr, len] = await this.allocator.async_write(
+                  new TextEncoder().encode(JSON.stringify(serialized_error)),
+                  this.lock,
+                  3,
+                );
+
+                // notify error = code 1
+                const old = Atomics.compareExchange(notify_view, 0, 0, 1);
+
+                if (old !== 0) {
+                  console.error("what happened?");
+
+                  this.allocator.free(ptr, len);
+
+                  return;
+                }
+
+                const num = Atomics.notify(notify_view, 0);
+
+                if (num === 0) {
+                  console.error(error);
+
+                  this.allocator.free(ptr, len);
+
+                  Atomics.store(notify_view, 0, 0);
+                }
+              }
             };
 
             this.start_worker.postMessage({
