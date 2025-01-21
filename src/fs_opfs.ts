@@ -58,17 +58,19 @@ export class SyncOPFSFile extends Inode {
   }
 
   stat(): wasi.Filestat {
-    return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
+    return new wasi.Filestat(this.ino, wasi.FILETYPE_REGULAR_FILE, this.size);
   }
 }
 
 export class OpenSyncOPFSFile extends Fd {
   file: SyncOPFSFile;
   position: bigint = 0n;
+  ino: bigint;
 
   constructor(file: SyncOPFSFile) {
     super();
     this.file = file;
+    this.ino = Inode.issue_ino(this);
   }
 
   fd_allocate(offset: bigint, len: bigint): number {
@@ -89,6 +91,7 @@ export class OpenSyncOPFSFile extends Fd {
     return {
       ret: 0,
       filestat: new wasi.Filestat(
+        this.ino,
         wasi.FILETYPE_REGULAR_FILE,
         BigInt(this.file.handle.getSize()),
       ),

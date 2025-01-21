@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import fs from 'fs/promises';
-import { WASI, wasi, strace, OpenFile, File, Directory, PreopenDirectory, Fd } from "../../../dist/index.js"
+import { WASI, wasi, strace, OpenFile, File, Directory, PreopenDirectory, Fd, Inode } from "../../../dist/index.js"
 import { parseArgs } from "../shared/parseArgs.mjs"
 import { walkFs } from "../shared/walkFs.mjs"
 
@@ -9,10 +9,12 @@ class NodeStdout extends Fd {
   constructor(out) {
     super();
     this.out = out;
+    this.ino = Inode.issue_ino();
   }
 
   fd_filestat_get() {
     const filestat = new wasi.Filestat(
+      this.ino,
       wasi.FILETYPE_CHARACTER_DEVICE,
       BigInt(0),
     );

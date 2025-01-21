@@ -184,15 +184,16 @@ export const FILETYPE_SYMBOLIC_LINK = 7;
 
 export class Dirent {
   d_next: bigint;
-  d_ino: bigint = 0n;
+  d_ino: bigint;
   d_namlen: number;
   d_type: number;
   dir_name: Uint8Array;
 
-  constructor(next_cookie: bigint, name: string, type: number) {
+  constructor(next_cookie: bigint, d_ino: bigint, name: string, type: number) {
     const encoded_name = new TextEncoder().encode(name);
 
     this.d_next = next_cookie;
+    this.d_ino = d_ino;
     this.d_namlen = encoded_name.byteLength;
     this.d_type = type;
     this.dir_name = encoded_name;
@@ -265,7 +266,7 @@ export const OFLAGS_TRUNC = 1 << 3;
 
 export class Filestat {
   dev: bigint = 0n;
-  ino: bigint = 0n;
+  ino: bigint;
   filetype: number;
   nlink: bigint = 0n;
   size: bigint;
@@ -273,7 +274,8 @@ export class Filestat {
   mtim: bigint = 0n;
   ctim: bigint = 0n;
 
-  constructor(filetype: number, size: bigint) {
+  constructor(ino: bigint, filetype: number, size: bigint) {
+    this.ino = ino;
     this.filetype = filetype;
     this.size = size;
   }

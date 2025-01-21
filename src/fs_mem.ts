@@ -159,12 +159,17 @@ export class OpenDirectory extends Fd {
     if (cookie == 0n) {
       return {
         ret: wasi.ERRNO_SUCCESS,
-        dirent: new wasi.Dirent(1n, ".", wasi.FILETYPE_DIRECTORY),
+        dirent: new wasi.Dirent(1n, this.dir.ino, ".", wasi.FILETYPE_DIRECTORY),
       };
     } else if (cookie == 1n) {
       return {
         ret: wasi.ERRNO_SUCCESS,
-        dirent: new wasi.Dirent(2n, "..", wasi.FILETYPE_DIRECTORY),
+        dirent: new wasi.Dirent(
+          2n,
+          this.dir.parent_ino(),
+          "..",
+          wasi.FILETYPE_DIRECTORY,
+        ),
       };
     }
 
@@ -178,7 +183,12 @@ export class OpenDirectory extends Fd {
 
     return {
       ret: 0,
-      dirent: new wasi.Dirent(cookie + 1n, name, entry.stat().filetype),
+      dirent: new wasi.Dirent(
+        cookie + 1n,
+        entry.ino,
+        name,
+        entry.stat().filetype,
+      ),
     };
   }
 
@@ -501,7 +511,7 @@ export class File extends Inode {
   }
 
   stat(): wasi.Filestat {
-    return new wasi.Filestat(wasi.FILETYPE_REGULAR_FILE, this.size);
+    return new wasi.Filestat(this.ino, wasi.FILETYPE_REGULAR_FILE, this.size);
   }
 }
 
@@ -547,6 +557,7 @@ class Path {
 
 export class Directory extends Inode {
   contents: Map<string, Inode>;
+  private parent: Directory | null = null;
 
   constructor(contents: Map<string, Inode> | [string, Inode][]) {
     super();
@@ -555,6 +566,19 @@ export class Directory extends Inode {
     } else {
       this.contents = contents;
     }
+
+    for (const entry of this.contents.values()) {
+      if (entry instanceof Directory) {
+        entry.parent = this;
+      }
+    }
+  }
+
+  parent_ino(): bigint {
+    if (this.parent == null) {
+      return Inode.root_ino();
+    }
+    return this.parent.ino;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -563,7 +587,7 @@ export class Directory extends Inode {
   }
 
   stat(): wasi.Filestat {
-    return new wasi.Filestat(wasi.FILETYPE_DIRECTORY, 0n);
+    return new wasi.Filestat(this.ino, wasi.FILETYPE_DIRECTORY, 0n);
   }
 
   get_entry_for_path(path: Path): { ret: number; entry: Inode | null } {
@@ -697,15 +721,18 @@ export class Directory extends Inode {
 }
 
 export class ConsoleStdout extends Fd {
+  private ino: bigint;
   write: (buffer: Uint8Array) => void;
 
   constructor(write: (buffer: Uint8Array) => void) {
     super();
+    this.ino = Inode.issue_ino(this);
     this.write = write;
   }
 
   fd_filestat_get(): { ret: number; filestat: wasi.Filestat } {
     const filestat = new wasi.Filestat(
+      this.ino,
       wasi.FILETYPE_CHARACTER_DEVICE,
       BigInt(0),
     );
