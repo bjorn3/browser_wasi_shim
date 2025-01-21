@@ -117,6 +117,21 @@ export abstract class Fd {
 }
 
 export abstract class Inode {
+  ino: bigint;
+
+  constructor() {
+    this.ino = Inode.issue_ino();
+  }
+
+  // NOTE: ino 0 is reserved for the root directory
+  private static next_ino: bigint = 1n;
+  static issue_ino(): bigint {
+    return Inode.next_ino++;
+  }
+  static root_ino(): bigint {
+    return 0n;
+  }
+
   abstract path_open(
     oflags: number,
     fs_rights_base: bigint,

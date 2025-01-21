@@ -521,9 +521,8 @@ export class WASIFarmRefUseArrayBuffer extends WASIFarmRef {
 
     this.release_fd(fd);
 
-    const file_stat = new wasi.Filestat(fs_filetype, fs_size);
+    const file_stat = new wasi.Filestat(fs_ino, fs_filetype, fs_size);
     file_stat.dev = fs_dev;
-    file_stat.ino = fs_ino;
     file_stat.nlink = fs_nlink;
     file_stat.atim = fs_atim;
     file_stat.mtim = fs_mtim;
@@ -1092,9 +1091,8 @@ export class WASIFarmRefUseArrayBuffer extends WASIFarmRef {
 
     this.release_fd(fd);
 
-    const file_stat = new wasi.Filestat(fs_filetype, fs_size);
+    const file_stat = new wasi.Filestat(fs_ino, fs_filetype, fs_size);
     file_stat.dev = fs_dev;
-    file_stat.ino = fs_ino;
     file_stat.nlink = fs_nlink;
     file_stat.atim = fs_atim;
     file_stat.mtim = fs_mtim;
