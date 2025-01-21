@@ -726,7 +726,7 @@ export class ConsoleStdout extends Fd {
 
   constructor(write: (buffer: Uint8Array) => void) {
     super();
-    this.ino = Inode.issue_ino(this);
+    this.ino = Inode.issue_ino();
     this.write = write;
   }
 

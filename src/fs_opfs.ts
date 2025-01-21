@@ -70,7 +70,7 @@ export class OpenSyncOPFSFile extends Fd {
   constructor(file: SyncOPFSFile) {
     super();
     this.file = file;
-    this.ino = Inode.issue_ino(this);
+    this.ino = Inode.issue_ino();
   }
 
   fd_allocate(offset: bigint, len: bigint): number {

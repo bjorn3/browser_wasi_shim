@@ -116,26 +116,17 @@ export abstract class Fd {
   }
 }
 
-class InoIssuer {
-  // NOTE: ino 0 is reserved for the root directory
-  private next_ino: bigint = 1n;
-
-  issue(_node: unknown): bigint {
-    // TODO: consider recycling ino if the node is deallocated
-    return this.next_ino++;
-  }
-}
-
 export abstract class Inode {
   ino: bigint;
 
   constructor() {
-    this.ino = Inode.issue_ino(this);
+    this.ino = Inode.issue_ino();
   }
 
-  static default_issuer = new InoIssuer();
-  static issue_ino(node: unknown): bigint {
-    return Inode.default_issuer.issue(node);
+  // NOTE: ino 0 is reserved for the root directory
+  private static next_ino: bigint = 1n;
+  static issue_ino(): bigint {
+    return Inode.next_ino++;
   }
   static root_ino(): bigint {
     return 0n;
