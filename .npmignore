@@ -2,5 +2,7 @@ node_modules
 *.wasm
 *.wasm.gz
 /examples
+/test
+/threads
 .github/
 src/
