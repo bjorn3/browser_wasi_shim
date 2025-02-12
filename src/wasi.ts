@@ -831,7 +831,8 @@ export default class WASI {
 
         if (
           "crypto" in globalThis &&
-          !(self.inst.exports.memory.buffer instanceof SharedArrayBuffer)
+          (typeof SharedArrayBuffer === "undefined" ||
+            !(self.inst.exports.memory.buffer instanceof SharedArrayBuffer))
         ) {
           for (let i = 0; i < buf_len; i += 65536) {
             crypto.getRandomValues(buffer8.subarray(i, i + 65536));
