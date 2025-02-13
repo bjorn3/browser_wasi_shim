@@ -1,6 +1,6 @@
 {
   "name": "@bjorn3/browser_wasi_shim",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "license": "MIT OR Apache-2.0",
   "description": "A pure javascript shim for WASI",
   "type": "module",
