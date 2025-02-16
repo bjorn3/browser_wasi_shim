@@ -813,9 +813,57 @@ export default class WASI {
           return wasi.ERRNO_BADF;
         }
       },
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      poll_oneoff(in_, out, nsubscriptions) {
-        throw "async io not supported";
+      poll_oneoff(
+        in_ptr: number,
+        out_ptr: number,
+        nsubscriptions: number,
+      ): number {
+        if (nsubscriptions === 0) {
+          return wasi.ERRNO_INVAL;
+        }
+        // TODO: For now, we only support a single subscription just to be enough for wasi-libc's
+        // clock_nanosleep.
+        if (nsubscriptions > 1) {
+          debug.log("poll_oneoff: only a single subscription is supported");
+          return wasi.ERRNO_NOTSUP;
+        }
+
+        // Read a subscription from the in buffer
+        const buffer = new DataView(self.inst.exports.memory.buffer);
+        const s = wasi.Subscription.read_bytes(buffer, in_ptr);
+        const eventtype = s.eventtype;
+        const clockid = s.clockid;
+        const timeout = s.timeout;
+        // TODO: For now, we only support clock subscriptions.
+        if (eventtype !== wasi.EVENTTYPE_CLOCK) {
+          debug.log("poll_oneoff: only clock subscriptions are supported");
+          return wasi.ERRNO_NOTSUP;
+        }
+
+        // Select timer
+        let getNow: (() => bigint) | undefined = undefined;
+        if (clockid === wasi.CLOCKID_MONOTONIC) {
+          getNow = () => BigInt(Math.round(performance.now() * 1_000_000));
+        } else if (clockid === wasi.CLOCKID_REALTIME) {
+          getNow = () => BigInt(new Date().getTime()) * 1_000_000n;
+        } else {
+          return wasi.ERRNO_INVAL;
+        }
+
+        // Perform the wait
+        const endTime =
+          (s.flags & wasi.SUBCLOCKFLAGS_SUBSCRIPTION_CLOCK_ABSTIME) !== 0
+            ? timeout
+            : getNow() + timeout;
+        while (endTime > getNow()) {
+          // block until the timeout is reached
+        }
+
+        // Write an event to the out buffer
+        const event = new wasi.Event(s.userdata, wasi.ERRNO_SUCCESS, eventtype);
+        event.write_bytes(buffer, out_ptr);
+
+        return wasi.ERRNO_SUCCESS;
       },
       proc_exit(exit_code: number) {
         throw new WASIProcExit(exit_code);

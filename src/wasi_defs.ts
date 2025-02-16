@@ -300,6 +300,40 @@ export const EVENTRWFLAGS_FD_READWRITE_HANGUP = 1 << 0;
 
 export const SUBCLOCKFLAGS_SUBSCRIPTION_CLOCK_ABSTIME = 1 << 0;
 
+export class Subscription {
+  constructor(
+    public userdata: bigint,
+    public eventtype: number,
+    public clockid: number,
+    public timeout: bigint,
+    public flags: number,
+  ) {}
+
+  static read_bytes(view: DataView, ptr: number): Subscription {
+    return new Subscription(
+      view.getBigUint64(ptr, true),
+      view.getUint8(ptr + 8),
+      view.getUint32(ptr + 16, true),
+      view.getBigUint64(ptr + 24, true),
+      view.getUint16(ptr + 36, true),
+    );
+  }
+}
+
+export class Event {
+  constructor(
+    public userdata: bigint,
+    public error: number,
+    public eventtype: number,
+  ) {}
+
+  write_bytes(view: DataView, ptr: number) {
+    view.setBigUint64(ptr, this.userdata, true);
+    view.setUint16(ptr + 8, this.error, true);
+    view.setUint8(ptr + 10, this.eventtype);
+  }
+}
+
 export const SIGNAL_NONE = 0;
 export const SIGNAL_HUP = 1;
 export const SIGNAL_INT = 2;
