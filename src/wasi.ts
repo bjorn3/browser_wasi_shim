@@ -105,7 +105,7 @@ export default class WASI {
         buffer.setUint32(environ_count, self.env.length, true);
         let buf_size = 0;
         for (const environ of self.env) {
-          buf_size += environ.length + 1;
+          buf_size += new TextEncoder().encode(environ).length + 1;
         }
         buffer.setUint32(environ_size, buf_size, true);
         debug.log(
