@@ -6,8 +6,8 @@
 // Therefore, a dedicated worker that creates a subworker (worker in worker) is prepared.
 // The request is made using BroadcastChannel.
 
-import * as Serializer from "../serialize_error.js";
 import { AllocatorUseArrayBuffer } from "../allocator.js";
+import * as Serializer from "../serialize_error.js";
 import type { WorkerBackgroundRefObject } from "./worker_export.js";
 
 // Note that postMessage, etc.
