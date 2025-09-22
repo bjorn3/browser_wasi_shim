@@ -14,14 +14,14 @@
 
 //  (import "wasi" "thread-spawn" (func $fimport$27 (param i32) (result i32)))
 
-import { WASIFarmAnimal } from "../animals.js";
-import type { WASIFarmRefObject } from "../ref.js";
-import type { WorkerBackgroundRefObject } from "./worker_background/index.js";
+import { WASIFarmAnimal } from "../animals.ts";
+import type { WASIFarmRefObject } from "../ref.ts";
+import type { WorkerBackgroundRefObject } from "./worker_background/index.ts";
 import {
   WorkerBackgroundRef,
-  worker_background_worker_url,
-} from "./worker_background/index.js";
-import { WorkerBackgroundRefObjectConstructor } from "./worker_background/worker_export.js";
+  gen_worker_background_worker_url,
+} from "./worker_background/index.ts";
+import { WorkerBackgroundRefObjectConstructor } from "./worker_background/worker_export.ts";
 
 type ThreadSpawnerObject = {
   share_memory: WebAssembly.Memory;
@@ -55,6 +55,7 @@ export class ThreadSpawner {
     worker_background_ref_object?: WorkerBackgroundRefObject,
     thread_spawn_wasm?: WebAssembly.Module,
     // inst_default_buffer_kept?: WebAssembly.Memory,
+    worker_background_worker_url?: string,
   ) {
     this.worker_url = worker_url;
     this.wasi_farm_refs_object = wasi_farm_refs_object;
@@ -86,12 +87,19 @@ export class ThreadSpawner {
       });
 
     if (worker_background_ref_object === undefined) {
-      const worker_background_worker_url__ = worker_background_worker_url();
+      let worker_background_worker_url__: string;
+      if (worker_background_worker_url) {
+        worker_background_worker_url__ = worker_background_worker_url;
+      } else {
+        worker_background_worker_url__ = gen_worker_background_worker_url();
+      }
       this.worker_background_worker = new Worker(
         worker_background_worker_url__,
         { type: "module" },
       );
-      URL.revokeObjectURL(worker_background_worker_url__);
+      if (!worker_background_worker_url) {
+        URL.revokeObjectURL(worker_background_worker_url__);
+      }
       const { promise, resolve } = Promise.withResolvers<void>();
       this.worker_background_worker_promise = promise;
       this.worker_background_worker.onmessage = () => {
@@ -121,9 +129,7 @@ export class ThreadSpawner {
   // This cannot blocking.
   async wait_worker_background_worker(): Promise<void> {
     if (this.worker_background_worker_promise) {
-      const promise = this.worker_background_worker_promise;
-
-      await promise;
+      await this.worker_background_worker_promise;
 
       return;
     }

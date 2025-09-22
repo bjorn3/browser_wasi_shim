@@ -1,10 +1,10 @@
 import { type Fd, wasi } from "@bjorn3/browser_wasi_shim";
-import { WASIFarmPark } from "../park.js";
-import type { FdCloseSender } from "../sender.js";
-import { AllocatorUseArrayBuffer } from "./allocator.js";
-import { FdCloseSenderUseArrayBuffer } from "./fd_close_sender.js";
-import type { WASIFarmRefUseArrayBufferObject } from "./ref.js";
-import { get_func_name_from_number } from "./util.js";
+import { WASIFarmPark } from "../park.ts";
+import type { FdCloseSender } from "../sender.ts";
+import { AllocatorUseArrayBuffer } from "./allocator.ts";
+import { FdCloseSenderUseArrayBuffer } from "./fd_close_sender.ts";
+import type { WASIFarmRefUseArrayBufferObject } from "./ref.ts";
+import { get_func_name_from_number } from "./util.ts";
 
 export const fd_func_sig_u32_size: number = 18;
 export const fd_func_sig_bytes: number = fd_func_sig_u32_size * 4;

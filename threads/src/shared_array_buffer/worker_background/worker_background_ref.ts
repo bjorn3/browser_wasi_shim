@@ -1,9 +1,9 @@
-import { AllocatorUseArrayBuffer } from "../allocator.js";
+import { AllocatorUseArrayBuffer } from "../allocator.ts";
 import type {
   WorkerBackgroundRefObject,
   WorkerOptions,
-} from "./worker_export.js";
-import * as Serializer from "../serialize_error.js";
+} from "./worker_export.ts";
+import * as Serializer from "../serialize_error.ts";
 
 export class WorkerBackgroundRef {
   private allocator: AllocatorUseArrayBuffer;

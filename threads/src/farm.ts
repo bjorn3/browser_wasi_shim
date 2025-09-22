@@ -1,7 +1,7 @@
 import type { Fd } from "@bjorn3/browser_wasi_shim";
-import type { WASIFarmPark } from "./park.js";
-import type { WASIFarmRefObject } from "./ref.js";
-import { WASIFarmParkUseArrayBuffer } from "./shared_array_buffer/index.js";
+import type { WASIFarmPark } from "./park.ts";
+import type { WASIFarmRefObject } from "./ref.ts";
+import { WASIFarmParkUseArrayBuffer } from "./shared_array_buffer/index.ts";
 
 export class WASIFarm {
   private fds: Array<Fd>;

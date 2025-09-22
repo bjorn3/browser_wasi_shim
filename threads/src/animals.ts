@@ -1,11 +1,11 @@
 import { WASIProcExit } from "@bjorn3/browser_wasi_shim";
-import type { WASIFarmRef } from "./ref.js";
-import type { WASIFarmRefObject } from "./ref.js";
-import type { FdCloseSender } from "./sender.js";
-import { WASIFarmRefUseArrayBuffer } from "./shared_array_buffer/index.js";
-import type { WASIFarmRefUseArrayBufferObject } from "./shared_array_buffer/index.js";
-import { ThreadSpawner } from "./shared_array_buffer/index.js";
 import { wasi } from "@bjorn3/browser_wasi_shim";
+import type { WASIFarmRef } from "./ref.ts";
+import type { WASIFarmRefObject } from "./ref.ts";
+import type { FdCloseSender } from "./sender.ts";
+import { WASIFarmRefUseArrayBuffer } from "./shared_array_buffer/index.ts";
+import type { WASIFarmRefUseArrayBufferObject } from "./shared_array_buffer/index.ts";
+import { ThreadSpawner } from "./shared_array_buffer/index.ts";
 
 export class WASIFarmAnimal {
   args: Array<string>;
@@ -249,6 +249,7 @@ export class WASIFarmAnimal {
         }
         this.map_new_fd(j, i);
       }
+
       wasi_farm_ref.set_park_fds_map(override_fd_map);
 
       // console.log("this.fd_map", this.fd_map);
@@ -350,6 +351,7 @@ export class WASIFarmAnimal {
       thread_spawn_worker_url?: string;
       thread_spawn_wasm?: WebAssembly.Module;
       hand_override_fd_map?: Array<[number, number]>;
+      worker_background_worker_url?: string;
     } = {},
     override_fd_maps?: Array<number[]>,
     thread_spawner?: ThreadSpawner,
@@ -410,6 +412,7 @@ export class WASIFarmAnimal {
           undefined,
           undefined,
           options.thread_spawn_wasm,
+          options.worker_background_worker_url,
         );
       }
     }

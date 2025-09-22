@@ -1,8 +1,8 @@
-import { WASIFarmParkUseArrayBuffer } from "./park.js";
-import { WASIFarmRefUseArrayBuffer } from "./ref.js";
-import type { WASIFarmRefUseArrayBufferObject } from "./ref.js";
-import { ThreadSpawner } from "./thread_spawn.js";
-import { thread_spawn_on_worker } from "./thread_spawn.js";
+import { WASIFarmParkUseArrayBuffer } from "./park.ts";
+import { WASIFarmRefUseArrayBuffer } from "./ref.ts";
+import type { WASIFarmRefUseArrayBufferObject } from "./ref.ts";
+import { ThreadSpawner } from "./thread_spawn.ts";
+import { thread_spawn_on_worker } from "./thread_spawn.ts";
 
 export {
   WASIFarmRefUseArrayBuffer,
