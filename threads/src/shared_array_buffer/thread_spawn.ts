@@ -24,7 +24,9 @@ import {
 import { WorkerBackgroundRefObjectConstructor } from "./worker_background/worker_export.ts";
 
 type ThreadSpawnerObject = {
-  share_memory: WebAssembly.Memory;
+  share_memory: {
+    [key: string]: WebAssembly.Memory;
+  };
   wasi_farm_refs_object: Array<WASIFarmRefObject>;
   worker_url: string;
   worker_background_ref_object: WorkerBackgroundRefObject;
@@ -32,7 +34,9 @@ type ThreadSpawnerObject = {
 };
 
 export class ThreadSpawner {
-  private share_memory: WebAssembly.Memory;
+  private share_memory: {
+    [key: string]: WebAssembly.Memory;
+  };
   private wasi_farm_refs_object: Array<WASIFarmRefObject>;
   private worker_url: string;
   private worker_background_ref: WorkerBackgroundRef;
@@ -48,7 +52,9 @@ export class ThreadSpawner {
   constructor(
     worker_url: string,
     wasi_farm_refs_object: Array<WASIFarmRefObject>,
-    share_memory?: WebAssembly.Memory,
+    share_memory?: {
+      [key: string]: WebAssembly.Memory;
+    },
     // 16MB for the time being.
     // https://users.rust-lang.org/t/what-is-the-size-limit-of-threads-stack-in-rust/11867/3
     MIN_STACK = 16777216,
@@ -60,31 +66,27 @@ export class ThreadSpawner {
     this.worker_url = worker_url;
     this.wasi_farm_refs_object = wasi_farm_refs_object;
 
-    const min_initial_size = 1048576 / 65536; // Rust's default stack size is 1MB.
-    const initial_size = MIN_STACK / 65536;
-    if (initial_size < min_initial_size) {
-      throw new Error(
-        `The stack size must be at least ${min_initial_size} bytes.`,
-      );
-    }
-    const max_memory = 1073741824 / 65536; // Rust's default maximum memory size is 1GB.
+    if (share_memory === undefined) {
+      const min_initial_size = 1048576 / 65536; // Rust's default stack size is 1MB.
+      const initial_size = MIN_STACK / 65536;
+      if (initial_size < min_initial_size) {
+        throw new Error(
+          `The stack size must be at least ${min_initial_size} bytes.`,
+        );
+      }
+      const max_memory = 1073741824 / 65536; // Rust's default maximum memory size is 1GB.
 
-    // this.inst_default_buffer_kept =
-    //   inst_default_buffer_kept ||
-    //   new WebAssembly.Memory({
-    //     initial: 1,
-    //     maximum: max_memory,
-    //     shared: true,
-    //   });
-
-    this.share_memory =
-      share_memory ||
       // WebAssembly.Memory's 1 page is 65536 bytes.
-      new WebAssembly.Memory({
-        initial: initial_size,
-        maximum: max_memory,
-        shared: true,
-      });
+      share_memory = {
+        memory: new WebAssembly.Memory({
+          initial: initial_size,
+          maximum: max_memory,
+          shared: true,
+        }),
+      };
+    }
+
+    this.share_memory = share_memory;
 
     if (worker_background_ref_object === undefined) {
       let worker_background_worker_url__: string;
@@ -246,7 +248,9 @@ export class ThreadSpawner {
     return thread_spawner;
   }
 
-  get_share_memory(): WebAssembly.Memory {
+  get_share_memory(): {
+    [key: string]: WebAssembly.Memory;
+  } {
     return this.share_memory;
   }
 
@@ -299,7 +303,9 @@ export const thread_spawn_on_worker = async (
   instantiate: (
     thread_spawn_wasm: WebAssembly.Module,
     imports: {
-      env: { memory: WebAssembly.Memory };
+      env: {
+        [key: string]: WebAssembly.Memory;
+      };
       wasi: {
         "thread-spawn": (start_arg: number) => number;
       };
@@ -359,7 +365,7 @@ export const thread_spawn_on_worker = async (
 
       const inst = await instantiate(thread_spawn_wasm, {
         env: {
-          memory: wasi.get_share_memory(),
+          ...wasi.get_share_memory(),
         },
         wasi: wasi.wasiThreadImport,
         wasi_snapshot_preview1: wasi.wasiImport,
@@ -409,7 +415,7 @@ export const thread_spawn_on_worker = async (
 
     const inst = await instantiate(thread_spawn_wasm, {
       env: {
-        memory: wasi.get_share_memory(),
+        ...wasi.get_share_memory(),
       },
       wasi: wasi.wasiThreadImport,
       wasi_snapshot_preview1: wasi.wasiImport,

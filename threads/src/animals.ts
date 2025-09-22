@@ -122,8 +122,11 @@ export class WASIFarmAnimal {
       throw new Error("what happened?");
     }
 
-    const view = new Uint8Array(this.get_share_memory().buffer);
-    view.fill(0);
+    const memories = this.thread_spawner.get_share_memory();
+    for (const share_memory in memories) {
+      const view = new Uint8Array(memories[share_memory].buffer);
+      view.fill(0);
+    }
 
     await this.thread_spawner.async_start_on_thread(
       this.args,
@@ -151,8 +154,11 @@ export class WASIFarmAnimal {
       throw new Error("what happened?");
     }
 
-    const view = new Uint8Array(this.get_share_memory().buffer);
-    view.fill(0);
+    const memories = this.thread_spawner.get_share_memory();
+    for (const share_memory in memories) {
+      const view = new Uint8Array(memories[share_memory].buffer);
+      view.fill(0);
+    }
 
     console.log("block_start_on_thread: start");
 
@@ -335,7 +341,9 @@ export class WASIFarmAnimal {
     }
   }
 
-  get_share_memory(): WebAssembly.Memory {
+  get_share_memory(): {
+    [key: string]: WebAssembly.Memory;
+  } {
     if (!this.thread_spawner) {
       throw new Error("thread_spawner is not defined");
     }
@@ -353,7 +361,9 @@ export class WASIFarmAnimal {
       thread_spawn_wasm?: WebAssembly.Module;
       hand_override_fd_map?: Array<[number, number]>;
       worker_background_worker_url?: string;
-      share_memory?: WebAssembly.Memory;
+      share_memory?: {
+        [key: string]: WebAssembly.Memory;
+      };
     } = {},
     override_fd_maps?: Array<number[]>,
     thread_spawner?: ThreadSpawner,
