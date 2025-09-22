@@ -283,18 +283,34 @@ export class ThreadSpawner {
 
 // send fd_map is not implemented yet.
 // issue: the fd passed to the child process is different from the parent process.
-export const thread_spawn_on_worker = async (msg: {
-  this_is_thread_spawn: boolean;
-  worker_id?: number;
-  start_arg: number;
-  worker_background_ref: WorkerBackgroundRefObject;
-  sl_object: ThreadSpawnerObject;
-  thread_spawn_wasm: WebAssembly.Module;
-  args: Array<string>;
-  env: Array<string>;
-  fd_map: [number, number][];
-  this_is_start?: boolean;
-}): Promise<WASIFarmAnimal | undefined> => {
+export const thread_spawn_on_worker = async (
+  msg: {
+    this_is_thread_spawn: boolean;
+    worker_id?: number;
+    start_arg: number;
+    worker_background_ref: WorkerBackgroundRefObject;
+    sl_object: ThreadSpawnerObject;
+    thread_spawn_wasm: WebAssembly.Module;
+    args: Array<string>;
+    env: Array<string>;
+    fd_map: [number, number][];
+    this_is_start?: boolean;
+  },
+  instantiate: (
+    thread_spawn_wasm: WebAssembly.Module,
+    imports: {
+      env: { memory: WebAssembly.Memory };
+      wasi: {
+        "thread-spawn": (start_arg: number) => number;
+      };
+      wasi_snapshot_preview1: {
+        [key: string]: (...args: any[]) => unknown;
+      };
+    },
+  ) => Promise<WebAssembly.Instance> = WebAssembly.instantiate.bind(
+    WebAssembly,
+  ),
+): Promise<WASIFarmAnimal | undefined> => {
   if (msg.this_is_thread_spawn) {
     const {
       sl_object,
@@ -341,7 +357,7 @@ export const thread_spawn_on_worker = async (msg: {
         thread_spawner,
       );
 
-      const inst = await WebAssembly.instantiate(thread_spawn_wasm, {
+      const inst = await instantiate(thread_spawn_wasm, {
         env: {
           memory: wasi.get_share_memory(),
         },
@@ -391,7 +407,7 @@ export const thread_spawn_on_worker = async (msg: {
       thread_spawner,
     );
 
-    const inst = await WebAssembly.instantiate(thread_spawn_wasm, {
+    const inst = await instantiate(thread_spawn_wasm, {
       env: {
         memory: wasi.get_share_memory(),
       },

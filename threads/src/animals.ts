@@ -352,6 +352,7 @@ export class WASIFarmAnimal {
       thread_spawn_wasm?: WebAssembly.Module;
       hand_override_fd_map?: Array<[number, number]>;
       worker_background_worker_url?: string;
+      share_memory?: WebAssembly.Memory;
     } = {},
     override_fd_maps?: Array<number[]>,
     thread_spawner?: ThreadSpawner,
@@ -408,7 +409,7 @@ export class WASIFarmAnimal {
         this.thread_spawner = new ThreadSpawner(
           options.thread_spawn_worker_url,
           wasi_farm_refs_tmp,
-          undefined,
+          options.share_memory,
           undefined,
           undefined,
           options.thread_spawn_wasm,

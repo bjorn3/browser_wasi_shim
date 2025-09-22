@@ -1,6 +1,6 @@
 {
   "name": "@oligami/browser_wasi_shim-threads",
-  "version": "0.1.3",
+  "version": "0.1.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
