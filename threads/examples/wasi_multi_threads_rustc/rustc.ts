@@ -27,12 +27,16 @@ globalThis.onmessage = async (e) => {
           .href,
         // thread_spawn_worker_url: "./thread_spawn.ts",
         thread_spawn_wasm: wasm,
+        worker_background_worker_url: new URL(
+          "./worker_background.ts",
+          import.meta.url,
+        ).href,
       },
     );
 
     await wasi.wait_worker_background_worker();
 
-    wasi.get_share_memory().grow(200);
+    wasi.get_share_memory().memory.grow(200);
 
     console.log("Waiting for worker background worker...");
 

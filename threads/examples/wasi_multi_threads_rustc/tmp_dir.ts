@@ -1,11 +1,14 @@
 import {
+  Directory,
+  File,
   type Inode,
   PreopenDirectory,
-  File,
-  Directory,
 } from "@bjorn3/browser_wasi_shim";
-import { WASIFarm } from "../../src";
 import { SharedObject } from "@oligami/shared-object";
+import { WASIFarm } from "../../src";
+import { wait_async_polyfill } from "../../src";
+
+wait_async_polyfill();
 
 const toMap = (arr: Array<[string, Inode]>) => new Map<string, Inode>(arr);
 

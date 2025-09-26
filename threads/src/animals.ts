@@ -1,6 +1,5 @@
 import { WASIProcExit } from "@bjorn3/browser_wasi_shim";
-// import { wasi } from "@bjorn3/browser_wasi_shim";
-import * as wasi from "../../src/wasi_defs.ts";
+import { wasi } from "@bjorn3/browser_wasi_shim";
 import type { WASIFarmRef } from "./ref.ts";
 import type { WASIFarmRefObject } from "./ref.ts";
 import type { FdCloseSender } from "./sender.ts";
@@ -71,11 +70,16 @@ export class WASIFarmAnimal {
     return [mapped_fd, wasi_ref_n];
   }
 
-  /// Start a WASI command
+  /** Start a WASI command
+  When this function is executed, the WebAssembly (Wasm) code runs on that thread.
+  If the Wasm code throws an error or calls process_exit,
+  the main thread would need to be forcibly terminated. However, since this is not possible, if the Wasm code aborts in a child thread, it will be thrown from the worker_background_worker function. By default, this function is hidden. For detailed usage, please refer to the examples/worker_background_worker.ts file.
+  If you are dealing with programs that may abort,
+  consider using async_start_on_thread or block_start_on_thread instead. */
   start(instance: {
     // FIXME v0.3: close opened Fds after execution
     exports: { memory: WebAssembly.Memory; _start: () => unknown };
-  }) {
+  }): number {
     this.inst = instance;
 
     try {
@@ -102,15 +106,26 @@ export class WASIFarmAnimal {
     }
   }
 
-  /// Start a WASI command on a thread
-  /// If a module has child threads and a child thread throws an error,
-  /// the main thread should also be stopped,
-  /// but there is no way to stop it,
-  /// so the entire worker is stopped.
-  /// If it is not necessary, do not use it.
-  /// Custom imports are not implemented,
-  /// function because it cannot be passed to other threads.
-  /// If the sharedObject library someday supports synchronization, it could be used to support this.
+  /**
+   * This function is similar to start, but it does not handle error and exit code.
+   */
+  start_only(instance: {
+    exports: { memory: WebAssembly.Memory; _start: () => unknown };
+  }) {
+    this.inst = instance;
+    instance.exports._start();
+  }
+
+  /** Start a WASI command on a thread.
+    If the module has child threads and one of them throws an error,
+    the main thread should normally also be stopped.
+    However, since there is no way to stop it,
+    the entire worker will be stopped instead.
+    Do not use this if it is not necessary.
+    If you want to use custom imports,
+    pass the optional instantiate function as an argument
+    to the thread_spawn_on_worker function.
+  */
   async async_start_on_thread(): Promise<number> {
     if (!this.can_thread_spawn || !this.thread_spawner) {
       throw new Error("thread_spawn is not supported");
@@ -128,17 +143,29 @@ export class WASIFarmAnimal {
       view.fill(0);
     }
 
+    const code_promise = this.thread_spawner.async_wait_done_or_error();
+
     await this.thread_spawner.async_start_on_thread(
       this.args,
       this.env,
       this.fd_map,
     );
 
-    const code = await this.thread_spawner.async_wait_done_or_error();
+    const code = await code_promise;
 
     return code;
   }
 
+  /** Start a WASI command on a thread.
+    If the module has child threads and one of them throws an error,
+    the main thread should normally also be stopped.
+    However, since there is no way to stop it,
+    the entire worker will be stopped instead.
+    Do not use this if it is not necessary.
+    If you want to use custom imports,
+    pass the optional instantiate function as an argument
+    to the thread_spawn_on_worker function.
+  */
   block_start_on_thread(): number {
     if (!this.can_thread_spawn || !this.thread_spawner) {
       throw new Error("thread_spawn is not supported");
@@ -184,15 +211,7 @@ export class WASIFarmAnimal {
     start_arg: number,
   ) {
     this.inst = instance;
-    try {
-      instance.exports.wasi_thread_start(thread_id, start_arg);
-      return 0;
-    } catch (e) {
-      if (e instanceof WASIProcExit) {
-        return e.code;
-      }
-      throw e;
-    }
+    instance.exports.wasi_thread_start(thread_id, start_arg);
   }
 
   /// Initialize a WASI reactor

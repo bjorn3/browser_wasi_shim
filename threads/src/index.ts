@@ -6,3 +6,5 @@ export { WASIFarm, WASIFarmRef, WASIFarmAnimal };
 const worker_background_worker_url: string =
   "./dist/worker_background_worker.min.ts";
 export { worker_background_worker_url };
+// @ts-ignore
+export { wait_async_polyfill } from "./polyfill.js";

@@ -1,5 +1,8 @@
-import { OpenFile, File, ConsoleStdout } from "@bjorn3/browser_wasi_shim";
+import { ConsoleStdout, File, OpenFile } from "@bjorn3/browser_wasi_shim";
 import { WASIFarm } from "../../src";
+import { wait_async_polyfill } from "../../src";
+
+wait_async_polyfill();
 
 const farm = new WASIFarm(
   new OpenFile(new File([])), // stdin

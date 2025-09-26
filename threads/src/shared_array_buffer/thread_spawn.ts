@@ -14,6 +14,7 @@
 
 //  (import "wasi" "thread-spawn" (func $fimport$27 (param i32) (result i32)))
 
+import { WASIProcExit } from "@bjorn3/browser_wasi_shim";
 import { WASIFarmAnimal } from "../animals.ts";
 import type { WASIFarmRefObject } from "../ref.ts";
 import type { WorkerBackgroundRefObject } from "./worker_background/index.ts";
@@ -77,16 +78,16 @@ export class ThreadSpawner {
       const max_memory = 1073741824 / 65536; // Rust's default maximum memory size is 1GB.
 
       // WebAssembly.Memory's 1 page is 65536 bytes.
-      share_memory = {
+      this.share_memory = {
         memory: new WebAssembly.Memory({
           initial: initial_size,
           maximum: max_memory,
           shared: true,
         }),
       };
+    } else {
+      this.share_memory = share_memory;
     }
-
-    this.share_memory = share_memory;
 
     if (worker_background_ref_object === undefined) {
       let worker_background_worker_url__: string;
@@ -118,7 +119,9 @@ export class ThreadSpawner {
           sl_object: this.get_object(),
           thread_spawn_wasm,
         },
-        worker_background_ref_object: this.worker_background_ref_object,
+        worker_background_ref_object: structuredClone(
+          this.worker_background_ref_object,
+        ),
       });
     } else {
       this.worker_background_ref_object = worker_background_ref_object;
@@ -285,8 +288,10 @@ export class ThreadSpawner {
   }
 }
 
-// send fd_map is not implemented yet.
-// issue: the fd passed to the child process is different from the parent process.
+/** send fd_map is not implemented yet.
+issue: the fd passed to the child process is different from the parent process.
+@param instantiate - WebAssembly.instantiate or custom instantiate function
+*/
 export const thread_spawn_on_worker = async (
   msg: {
     this_is_thread_spawn: boolean;
@@ -310,6 +315,7 @@ export const thread_spawn_on_worker = async (
         "thread-spawn": (start_arg: number) => number;
       };
       wasi_snapshot_preview1: {
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
         [key: string]: (...args: any[]) => unknown;
       };
     },
@@ -372,7 +378,7 @@ export const thread_spawn_on_worker = async (
       });
 
       try {
-        wasi.start(
+        wasi.start_only(
           inst as unknown as {
             exports: {
               memory: WebAssembly.Memory;
@@ -381,11 +387,7 @@ export const thread_spawn_on_worker = async (
           },
         );
       } catch (e) {
-        globalThis.postMessage({
-          msg: "error",
-          error: e,
-        });
-
+        check_error(e, "main");
         return wasi;
       }
 
@@ -398,7 +400,7 @@ export const thread_spawn_on_worker = async (
 
     const { worker_id: thread_id, start_arg } = msg;
 
-    console.log(`thread_spawn worker ${thread_id} start`);
+    console.debug(`thread_spawn worker ${thread_id} start`);
 
     const wasi = new WASIFarmAnimal(
       sl_object.wasi_farm_refs_object,
@@ -438,11 +440,8 @@ export const thread_spawn_on_worker = async (
         start_arg,
       );
     } catch (e) {
-      globalThis.postMessage({
-        msg: "error",
-        error: e,
-      });
-
+      // biome-ignore lint/style/noNonNullAssertion: <explanation>
+      check_error(e, thread_id!);
       return wasi;
     }
 
@@ -453,3 +452,48 @@ export const thread_spawn_on_worker = async (
     return wasi;
   }
 };
+
+function check_error(e: unknown, thread_id: number | string): void {
+  let e_alt: Error | undefined = undefined;
+
+  if (e instanceof WASIProcExit) {
+    globalThis.postMessage({
+      msg: "exit",
+      code: e.code,
+    });
+
+    return;
+  }
+
+  try {
+    structuredClone(e);
+  } catch (error) {
+    if (
+      (
+        error as {
+          name: string;
+        }
+      ).name === "DataCloneError"
+    ) {
+      e_alt = new Error(
+        `An error occurred on the thread ${thread_id}, but it cannot be cloned.
+                Since error propagation does not work properly with this,
+                stopping cannot be performed.
+                Therefore, I will insert this error instead.
+                The error currently confirmed occurs in Firefox,
+                after executing with invoke on webworker and reaching an unreachable statement.
+                `,
+      );
+      e_alt.name = "EncounteredUncloneableError";
+      e_alt.stack = (e as Error).stack;
+    }
+  }
+  if (e_alt === undefined) {
+    e_alt = e as Error;
+  }
+
+  globalThis.postMessage({
+    msg: "error",
+    error: e_alt,
+  });
+}

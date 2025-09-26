@@ -16,6 +16,7 @@ export class WASIFarm {
     fds: Array<Fd> = [],
     options: {
       allocator_size?: number;
+      max_fds_limit?: number;
     } = {},
   ) {
     const new_fds = [];
@@ -64,6 +65,13 @@ export class WASIFarm {
       }
     }
 
+    // Check Atomics.waitAsync support
+    if (typeof Atomics.waitAsync !== "function") {
+      throw new Error(
+        "Atomics.waitAsync is not supported. Please use a polyfill.",
+      );
+    }
+
     if (this.can_array_buffer) {
       this.park = new WASIFarmParkUseArrayBuffer(
         this.fds_ref(),
@@ -72,6 +80,7 @@ export class WASIFarm {
         stderr_,
         default_allow_fds,
         options?.allocator_size,
+        options?.max_fds_limit,
       );
     } else {
       throw new Error("Non SharedArrayBuffer is not supported yet");
