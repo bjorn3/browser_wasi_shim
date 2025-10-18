@@ -169,7 +169,7 @@ export default class WASI {
           let monotonic_time: bigint;
           try {
             monotonic_time = BigInt(Math.round(performance.now() * 1000000));
-          } catch (e) {
+          } catch {
             // performance.now() is only available in browsers.
             // TODO use the perf_hooks builtin module for NodeJS
             monotonic_time = 0n;

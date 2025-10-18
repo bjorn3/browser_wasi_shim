@@ -5,13 +5,16 @@ export function strace<T extends object>(
   return new Proxy(imports, {
     get(target, prop, receiver) {
       const f = Reflect.get(target, prop, receiver);
-      if (no_trace.includes(prop)) {
+      if (no_trace.includes(prop) || typeof f !== "function") {
         return f;
       }
-      return function (...args: undefined[]) {
+      return (...args: unknown[]) => {
         console.log(prop, "(", ...args, ")");
-        // eslint-disable-next-line @typescript-eslint/ban-types
-        const result = Reflect.apply(f as Function, receiver, args);
+        const result = Reflect.apply(
+          f as (...fnArgs: unknown[]) => unknown,
+          receiver,
+          args,
+        );
         console.log(" =", result);
         return result;
       };
