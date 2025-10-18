@@ -79,7 +79,7 @@ async function configureRoutes(context, harnessURL) {
 }
 
 async function runWASIOnBrowser(options) {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({channel: "chromium"});
   const context = await browser.newContext();
   const harnessURL = 'http://browser-wasi-shim.localhost'
 
@@ -87,7 +87,7 @@ async function runWASIOnBrowser(options) {
 
   const page = await context.newPage();
   // Expose stdout/stderr bindings to allow test driver to capture output.
-  page.exposeBinding("bindingWriteIO", (_, buffer, destination) => {
+  await page.exposeBinding("bindingWriteIO", (_, buffer, destination) => {
     buffer = Buffer.from(buffer);
     switch (destination) {
       case "stdout":
@@ -101,7 +101,7 @@ async function runWASIOnBrowser(options) {
     }
   });
   // Expose a way to serialize preopened directories to the browser.
-  page.exposeBinding("bindingDerivePreopens", async (_, dirs) => {
+  await page.exposeBinding("bindingDerivePreopens", async (_, dirs) => {
     return await derivePreopens(dirs);
   });
 
