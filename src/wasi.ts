@@ -16,6 +16,8 @@ export class WASIProcExit extends Error {
 }
 
 export default class WASI {
+  #freeFds: Array<number> = [];
+
   args: Array<string> = [];
   env: Array<string> = [];
   fds: Array<Fd> = [];
@@ -208,6 +210,7 @@ export default class WASI {
         if (self.fds[fd] != undefined) {
           const ret = self.fds[fd].fd_close();
           self.fds[fd] = undefined;
+          self.#freeFds.push(fd);
           return ret;
         } else {
           return wasi.ERRNO_BADF;
@@ -497,6 +500,7 @@ export default class WASI {
           }
           self.fds[to] = self.fds[fd];
           self.fds[fd] = undefined;
+          self.#freeFds.push(fd);
           return 0;
         } else {
           return wasi.ERRNO_BADF;
@@ -691,9 +695,16 @@ export default class WASI {
           if (ret != 0) {
             return ret;
           }
-          // FIXME use first free fd
-          self.fds.push(fd_obj);
-          const opened_fd = self.fds.length - 1;
+          const opened_fd = (() => {
+            if (self.#freeFds.length > 0) {
+              const fd = self.#freeFds.pop();
+              self.fds[fd] = fd_obj;
+              return fd;
+            }
+
+            self.fds.push(fd_obj);
+            return self.fds.length - 1;
+          })();
           buffer.setUint32(opened_fd_ptr, opened_fd, true);
           return 0;
         } else {
