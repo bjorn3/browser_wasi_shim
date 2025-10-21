@@ -6,17 +6,28 @@ import { chromium } from "playwright"
 import { parseArgs } from "../shared/parseArgs.mjs"
 import { walkFs } from "../shared/walkFs.mjs"
 
+function parseDirSpec(dirSpec) {
+  const separator = dirSpec.indexOf("::");
+  if (separator === -1) {
+    return { host: dirSpec, guest: dirSpec };
+  }
+  const host = dirSpec.slice(0, separator);
+  const guest = dirSpec.slice(separator + 2) || ".";
+  return { host, guest };
+}
+
 async function derivePreopens(dirs) {
   const preopens = [];
-  for (let dir of dirs) {
-    const contents = await walkFs(dir, (name, entry, out) => {
+  for (const dirSpec of dirs) {
+    const { host, guest } = parseDirSpec(dirSpec);
+    const contents = await walkFs(host, (name, entry, out) => {
       if (entry.kind === "file") {
         // Convert buffer to array to make it serializable.
         entry.buffer = Array.from(entry.buffer);
       }
       return { ...out, [name]: entry };
     }, () => {});
-    preopens.push({ dir, contents });
+    preopens.push({ dir: guest, contents });
   }
   return preopens;
 }
@@ -58,7 +69,12 @@ async function configureRoutes(context, harnessURL) {
     const content = await fs.readFile(path.join(projectDir, relativePath));
     route.fulfill({
       status: 200,
-      contentType: 'application/javascript',
+      contentType:
+        {
+          ".wasm": "application/wasm",
+          ".json": "application/json",
+          ".js": "application/javascript",
+        }[path.extname(pathname)] || "application/octet-stream",
       body: content,
     });
   });
