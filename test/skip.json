@@ -1,13 +1,14 @@
 {
-  "WASI Assemblyscript tests": {
+  "WASI Assemblyscript  tests [wasm32-wasip1]": {
   },
-  "WASI C tests": {
+  "WASI C tests [wasm32-wasip1]": {
     "sock_shutdown-invalid_fd": "not implemented yet",
     "stat-dev-ino": "fail",
     "sock_shutdown-not_sock": "fail",
-    "fdopendir-with-access": "fail"
+    "fdopendir-with-access": "fail",
+    "pwrite-with-append": "fail"
   },
-  "WASI Rust tests": {
+  "WASI Rust tests [wasm32-wasip1]": {
     "path_exists": "fail",
     "fd_filestat_set": "fail",
     "symlink_create": "fail",
@@ -24,6 +25,7 @@
     "nofollow_errors": "fail",
     "path_open_preopen": "fail",
     "symlink_filestat": "fail",
-    "symlink_loop": "fail"
+    "symlink_loop": "fail",
+    "fstflags_validate": "fail"
   }
 }

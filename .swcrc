@@ -9,7 +9,7 @@
             "dts": false
         },
         "transform": {},
-        "target": "es2020",
+        "target": "esnext",
         "loose": false,
         "externalHelpers": false,
         "keepClassNames": true

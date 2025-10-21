@@ -12,9 +12,9 @@ if [ $# -gt 0 ]; then
 fi
 
 python3 "$TESTSUITE_ROOT/test-runner/wasi_test_runner.py"  \
-    --test-suite "$TESTSUITE_ROOT/tests/assemblyscript/testsuite/" \
-                 "$TESTSUITE_ROOT/tests/c/testsuite/" \
-                 "$TESTSUITE_ROOT/tests/rust/testsuite/" \
+    --test-suite "$TESTSUITE_ROOT/tests/assemblyscript/testsuite/wasm32-wasip1" \
+                 "$TESTSUITE_ROOT/tests/c/testsuite/wasm32-wasip1" \
+                 "$TESTSUITE_ROOT/tests/rust/testsuite/wasm32-wasip1" \
     --runtime-adapter "$TEST_DIR/adapters/$ADAPTER/adapter.py" \
     --exclude-filter "$TEST_DIR/skip.json" \
     $@

@@ -476,13 +476,13 @@ export class File extends Inode {
   readonly: boolean;
 
   constructor(
-    data: ArrayBuffer | SharedArrayBuffer | Uint8Array | Array<number>,
+    data: ArrayBufferLike | ArrayLike<number>,
     options?: Partial<{
       readonly: boolean;
     }>,
   ) {
     super();
-    this.data = new Uint8Array(data);
+    this.data = new Uint8Array(data as ArrayLike<number>);
     this.readonly = !!options?.readonly;
   }
 

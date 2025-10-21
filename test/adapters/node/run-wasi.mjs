@@ -33,10 +33,21 @@ class NodeStdout extends Fd {
   }
 }
 
+function parseDirSpec(dirSpec) {
+  const separator = dirSpec.indexOf("::");
+  if (separator === -1) {
+    return { host: dirSpec, guest: dirSpec };
+  }
+  const host = dirSpec.slice(0, separator);
+  const guest = dirSpec.slice(separator + 2) || ".";
+  return { host, guest };
+}
+
 async function derivePreopens(dirs) {
   const preopens = [];
-  for (let dir of dirs) {
-    const contents = await walkFs(dir, (name, entry, out) => {
+  for (const dirSpec of dirs) {
+    const { host, guest } = parseDirSpec(dirSpec);
+    const contents = await walkFs(host, (name, entry, out) => {
       switch (entry.kind) {
         case "dir":
           entry = new Directory(entry.contents);
@@ -50,7 +61,7 @@ async function derivePreopens(dirs) {
       out.set(name, entry);
       return out;
     }, () => new Map())
-    const preopen = new PreopenDirectory(dir, contents);
+    const preopen = new PreopenDirectory(guest, contents);
     preopens.push(preopen);
   }
   return preopens;
