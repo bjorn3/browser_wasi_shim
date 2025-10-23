@@ -87,6 +87,10 @@ export class OpenFile extends Fd {
     return wasi.ERRNO_SUCCESS;
   }
 
+  fd_filestat_set_times(atim: bigint, mtim: bigint, fst_flags: number): number {
+    return this.file.set_times(atim, mtim, fst_flags);
+  }
+
   fd_read(size: number): { ret: number; data: Uint8Array } {
     const slice = this.file.data.slice(
       Number(this.file_pos),
@@ -254,11 +258,31 @@ export class OpenDirectory extends Fd {
     return { ret: 0, filestat: entry.stat() };
   }
 
+  path_filestat_set_times(
+    _flags: number,
+    path_str: string,
+    atim: bigint,
+    mtim: bigint,
+    fst_flags: number,
+  ): number {
+    const { ret: path_err, path } = Path.from(path_str);
+    if (path == null) {
+      return path_err;
+    }
+
+    const { ret, entry } = this.dir.get_entry_for_path(path);
+    if (entry == null) {
+      return ret;
+    }
+
+    return entry.set_times(atim, mtim, fst_flags);
+  }
+
   path_lookup(
     path_str: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     dirflags: number,
-  ): { ret: number; inode_obj: Inode | null } {
+  ): { ret: number; inode_obj: InodeMem | null } {
     const { ret: path_ret, path } = Path.from(path_str);
     if (path == null) {
       return { ret: path_ret, inode_obj: null };
@@ -332,7 +356,7 @@ export class OpenDirectory extends Fd {
     ).ret;
   }
 
-  path_link(path_str: string, inode: Inode, allow_dir: boolean): number {
+  path_link(path_str: string, inode: InodeMem, allow_dir: boolean): number {
     const { ret: path_ret, path } = Path.from(path_str);
     if (path == null) {
       return path_ret;
@@ -391,7 +415,7 @@ export class OpenDirectory extends Fd {
     return wasi.ERRNO_SUCCESS;
   }
 
-  path_unlink(path_str: string): { ret: number; inode_obj: Inode | null } {
+  path_unlink(path_str: string): { ret: number; inode_obj: InodeMem | null } {
     const { ret: path_ret, path } = Path.from(path_str);
     if (path == null) {
       return { ret: path_ret, inode_obj: null };
@@ -478,6 +502,10 @@ export class OpenDirectory extends Fd {
     return wasi.ERRNO_BADF;
   }
 
+  fd_filestat_set_times(atim: bigint, mtim: bigint, fst_flags: number): number {
+    return this.dir.set_times(atim, mtim, fst_flags);
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   fd_read(size: number): { ret: number; data: Uint8Array } {
     return { ret: wasi.ERRNO_BADF, data: new Uint8Array() };
@@ -506,7 +534,7 @@ export class OpenDirectory extends Fd {
 export class PreopenDirectory extends OpenDirectory {
   prestat_name: string;
 
-  constructor(name: string, contents: Map<string, Inode>) {
+  constructor(name: string, contents: Map<string, InodeMem>) {
     super(new Directory(contents));
     this.prestat_name = name;
   }
@@ -519,7 +547,51 @@ export class PreopenDirectory extends OpenDirectory {
   }
 }
 
-export class File extends Inode {
+function realtime(): bigint {
+  return BigInt(Date.now()) * 1000000n;
+}
+
+export abstract class InodeMem extends Inode {
+  atim: bigint;
+  mtim: bigint;
+  ctim: bigint;
+
+  constructor() {
+    super();
+    const now = realtime();
+    this.atim = now;
+    this.mtim = now;
+    this.ctim = now;
+  }
+
+  set_times(atim: bigint, mtim: bigint, fst_flags: number): number {
+    const now = realtime();
+
+    if (fst_flags & wasi.FSTFLAGS_ATIM) {
+      this.atim = atim;
+      this.ctim = now;
+    }
+
+    if (fst_flags & wasi.FSTFLAGS_ATIM_NOW) {
+      this.atim = now;
+      this.ctim = now;
+    }
+
+    if (fst_flags & wasi.FSTFLAGS_MTIM) {
+      this.mtim = mtim;
+      this.ctim = now;
+    }
+
+    if (fst_flags & wasi.FSTFLAGS_MTIM_NOW) {
+      this.mtim = now;
+      this.ctim = now;
+    }
+
+    return wasi.ERRNO_SUCCESS;
+  }
+}
+
+export class File extends InodeMem {
   data: Uint8Array;
   readonly: boolean;
 
@@ -559,7 +631,14 @@ export class File extends Inode {
   }
 
   stat(): wasi.Filestat {
-    return new wasi.Filestat(this.ino, wasi.FILETYPE_REGULAR_FILE, this.size);
+    return new wasi.Filestat(
+      this.ino,
+      wasi.FILETYPE_REGULAR_FILE,
+      this.size,
+      this.atim,
+      this.mtim,
+      this.ctim,
+    );
   }
 }
 
@@ -603,11 +682,11 @@ class Path {
   }
 }
 
-export class Directory extends Inode {
-  contents: Map<string, Inode>;
+export class Directory extends InodeMem {
+  contents: Map<string, InodeMem>;
   parent: Directory | null = null;
 
-  constructor(contents: Map<string, Inode> | [string, Inode][]) {
+  constructor(contents: Map<string, InodeMem> | [string, InodeMem][]) {
     super();
     if (contents instanceof Array) {
       this.contents = new Map(contents);
@@ -635,11 +714,18 @@ export class Directory extends Inode {
   }
 
   stat(): wasi.Filestat {
-    return new wasi.Filestat(this.ino, wasi.FILETYPE_DIRECTORY, 0n);
+    return new wasi.Filestat(
+      this.ino,
+      wasi.FILETYPE_DIRECTORY,
+      0n,
+      this.atim,
+      this.mtim,
+      this.ctim,
+    );
   }
 
-  get_entry_for_path(path: Path): { ret: number; entry: Inode | null } {
-    let entry: Inode = this;
+  get_entry_for_path(path: Path): { ret: number; entry: InodeMem | null } {
+    let entry: InodeMem = this;
     for (const component of path.parts) {
       if (!(entry instanceof Directory)) {
         return { ret: wasi.ERRNO_NOTDIR, entry: null };
@@ -669,7 +755,7 @@ export class Directory extends Inode {
     ret: number;
     parent_entry: Directory | null;
     filename: string | null;
-    entry: Inode | null;
+    entry: InodeMem | null;
   } {
     const filename = path.parts.pop();
 
@@ -700,7 +786,8 @@ export class Directory extends Inode {
         entry: null,
       };
     }
-    const entry: Inode | undefined | null = parent_entry.contents.get(filename);
+    const entry: InodeMem | undefined | null =
+      parent_entry.contents.get(filename);
     if (entry === undefined) {
       if (!allow_undefined) {
         return {
@@ -731,7 +818,7 @@ export class Directory extends Inode {
   create_entry_for_path(
     path_str: string,
     is_dir: boolean,
-  ): { ret: number; entry: Inode | null } {
+  ): { ret: number; entry: InodeMem | null } {
     const { ret: path_ret, path } = Path.from(path_str);
     if (path == null) {
       return { ret: path_ret, entry: null };
