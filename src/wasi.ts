@@ -27,7 +27,6 @@ export default class WASI {
 
   /// Start a WASI command
   start(instance: {
-    // FIXME v0.3: close opened Fds after execution
     exports: { memory: WebAssembly.Memory; _start: () => unknown };
   }) {
     this.inst = instance;
@@ -40,6 +39,24 @@ export default class WASI {
       } else {
         throw e;
       }
+    } finally {
+      // When running a wasip1 command module, once _start returns,
+      // the instance state is now invalid and no other exports can be
+      // invoked again:
+      // https://github.com/WebAssembly/WASI/blob/main/legacy/application-abi.md#current-unstable-abi.
+      // Therefore, do aggressive cleanup of WASI instance as well,
+      // close all fds and purge the fds/freeFds array.
+      //
+      // CAUTION: the same WASI instance is not meant to be reused for
+      // multiple .start() calls! You need your own logic to preserve
+      // WASI state you care about (e.g. the preopen directories)
+      this.#freeFds = [];
+      for (const fd of this.fds) {
+        if (fd instanceof Fd) {
+          fd.fd_close();
+        }
+      }
+      this.fds = [];
     }
   }
 
