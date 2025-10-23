@@ -286,9 +286,9 @@ export class Filestat {
     view.setUint8(ptr + 16, this.filetype);
     view.setBigUint64(ptr + 24, this.nlink, true);
     view.setBigUint64(ptr + 32, this.size, true);
-    view.setBigUint64(ptr + 38, this.atim, true);
-    view.setBigUint64(ptr + 46, this.mtim, true);
-    view.setBigUint64(ptr + 52, this.ctim, true);
+    view.setBigUint64(ptr + 40, this.atim, true);
+    view.setBigUint64(ptr + 48, this.mtim, true);
+    view.setBigUint64(ptr + 56, this.ctim, true);
   }
 }
 
