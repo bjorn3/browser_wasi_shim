@@ -270,14 +270,24 @@ export class Filestat {
   filetype: number;
   nlink: bigint = 0n;
   size: bigint;
-  atim: bigint = 0n;
-  mtim: bigint = 0n;
-  ctim: bigint = 0n;
+  atim: bigint;
+  mtim: bigint;
+  ctim: bigint;
 
-  constructor(ino: bigint, filetype: number, size: bigint) {
+  constructor(
+    ino: bigint,
+    filetype: number,
+    size: bigint,
+    atim: bigint = 0n,
+    mtim: bigint = 0n,
+    ctim: bigint = 0n,
+  ) {
     this.ino = ino;
     this.filetype = filetype;
     this.size = size;
+    this.atim = atim;
+    this.mtim = mtim;
+    this.ctim = ctim;
   }
 
   write_bytes(view: DataView, ptr: number) {
