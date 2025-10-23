@@ -3,9 +3,7 @@
   },
   "WASI C tests [wasm32-wasip1]": {
     "sock_shutdown-invalid_fd": "not implemented yet",
-    "stat-dev-ino": "fail",
     "sock_shutdown-not_sock": "fail",
-    "fdopendir-with-access": "fail",
     "pwrite-with-append": "fail"
   },
   "WASI Rust tests [wasm32-wasip1]": {
@@ -17,7 +15,6 @@
     "fd_flags_set": "fail",
     "path_filestat": "fail",
     "path_link": "fail",
-    "fd_fdstat_set_rights": "fail",
     "readlink": "fail",
     "path_symlink_trailing_slashes": "fail",
     "poll_oneoff_stdio": "fail",
