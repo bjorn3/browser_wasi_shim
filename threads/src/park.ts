@@ -7,6 +7,8 @@ export abstract class WASIFarmPark {
   abstract notify_set_fd(fd: number): void;
   abstract notify_rm_fd(fd: number): void;
   abstract can_set_new_fd(fd: number): [boolean, Promise<void> | undefined];
+  /// Destroys the all threads spawned by this Runtime.
+  abstract destroy_animal(): void;
 
   protected fds: Array<Fd>;
   protected stdin: number | undefined;
@@ -35,7 +37,7 @@ export abstract class WASIFarmPark {
 
   private get_new_fd_lock = new Array<() => Promise<void>>();
 
-  // fdに対して、現在そのfdにidがアクセス可能かを示す。
+  // Indicates whether the given id currently has access to the fd.
   protected fds_map: Array<number[]>;
 
   // If the reassigned value is accessed after being closed,

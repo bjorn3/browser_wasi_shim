@@ -1,6 +1,6 @@
 import { strace } from "@bjorn3/browser_wasi_shim";
-import { WASIFarmAnimal } from "../../src";
 import { SharedObject } from "@oligami/shared-object";
+import { WASIFarmAnimal } from "../../src";
 
 let wasi: WASIFarmAnimal;
 let inst: {
@@ -24,6 +24,12 @@ globalThis.onmessage = async (e) => {
       wasi_refs,
       ["llvm"], // args
       [], // env
+      {
+        worker_background_worker_url: new URL(
+          "./worker_background.ts",
+          import.meta.url,
+        ).href,
+      },
     );
 
     // Memory is rewritten at this time.

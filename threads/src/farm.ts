@@ -1,11 +1,11 @@
 import type { Fd } from "@bjorn3/browser_wasi_shim";
-import type { WASIFarmPark } from "./park.js";
-import type { WASIFarmRefObject } from "./ref.js";
-import { WASIFarmParkUseArrayBuffer } from "./shared_array_buffer/index.js";
+import type { WASIFarmPark } from "./park.ts";
+import type { WASIFarmRefObject } from "./ref.ts";
+import { WASIFarmParkUseArrayBuffer } from "./shared_array_buffer/index.ts";
 
 export class WASIFarm {
   private fds: Array<Fd>;
-  private park: WASIFarmPark;
+  private park: WASIFarmPark | null;
 
   private can_array_buffer: boolean;
 
@@ -16,6 +16,7 @@ export class WASIFarm {
     fds: Array<Fd> = [],
     options: {
       allocator_size?: number;
+      max_fds_limit?: number;
     } = {},
   ) {
     const new_fds = [];
@@ -64,6 +65,13 @@ export class WASIFarm {
       }
     }
 
+    // Check Atomics.waitAsync support
+    if (typeof Atomics.waitAsync !== "function") {
+      throw new Error(
+        "Atomics.waitAsync is not supported. Please use a polyfill.",
+      );
+    }
+
     if (this.can_array_buffer) {
       this.park = new WASIFarmParkUseArrayBuffer(
         this.fds_ref(),
@@ -72,6 +80,7 @@ export class WASIFarm {
         stderr_,
         default_allow_fds,
         options?.allocator_size,
+        options?.max_fds_limit,
       );
     } else {
       throw new Error("Non SharedArrayBuffer is not supported yet");
@@ -104,6 +113,17 @@ export class WASIFarm {
   }
 
   get_ref(): WASIFarmRefObject {
+    if (this.park === null) {
+      throw new Error("WASIFarm is already destroyed");
+    }
+
     return this.park.get_ref();
+  }
+
+  /// Destroys the all threads spawned by this Runtime.
+  destroy_animal() {
+    if (this.park) {
+      this.park.destroy_animal();
+    }
   }
 }

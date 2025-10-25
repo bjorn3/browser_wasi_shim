@@ -354,6 +354,12 @@ self.onmessage = async (e) => {
     wasi_refs,
     [], // args
     [], // env
+    {
+      worker_background_worker_url: new URL(
+        "./worker_background.ts",
+        import.meta.url,
+      ).href,
+    },
   );
 
   // Memory is rewritten at this time.

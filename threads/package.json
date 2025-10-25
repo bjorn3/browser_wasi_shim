@@ -1,10 +1,10 @@
 {
   "name": "@oligami/browser_wasi_shim-threads",
-  "version": "0.1.1",
+  "version": "0.2.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run worker && vite build",
+    "build": "npm run worker && vite build && node ./scripts/post_build.js",
     "prepare": "npm run build",
     "fmt": "biome format --write .",
     "lint": "biome lint src examples import-module-test",
@@ -16,22 +16,21 @@
     "worker": "src/shared_array_buffer/worker_background/*.ts"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
-    "@swc/cli": "^0.5.1",
-    "@swc/core": "^1.9.3",
-    "better-typescript-lib": "^2.10.0",
+    "@biomejs/biome": "2.2.4",
+    "@swc/cli": "^0.7.8",
+    "@swc/core": "^1.13.5",
+    "better-typescript-lib": "^2.12.0",
     "npm-watch": "^0.13.0",
-    "typescript": "^5.7.2",
-    "unplugin-swc": "^1.5.1",
-    "vite": "^6.0.1",
-    "vite-plugin-dts": "^4.3.0"
+    "typescript": "^5.9.2",
+    "unplugin-swc": "^1.5.7",
+    "vite": "^7.1.6",
+    "vite-plugin-dts": "^4.5.4"
   },
   "dependencies": {
-    "@bjorn3/browser_wasi_shim": "^0.3.0",
-    "@oligami/browser_wasi_shim-threads": "file:"
+    "@bjorn3/browser_wasi_shim": "^0.4.2"
   },
   "peerDependencies": {
-    "@bjorn3/browser_wasi_shim": "^0.3.0"
+    "@bjorn3/browser_wasi_shim": "^0.4.2"
   },
   "private": false,
   "publishConfig": {

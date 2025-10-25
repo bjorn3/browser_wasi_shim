@@ -1,11 +1,14 @@
 import { WASIFarm } from "../../src";
 
 import {
-  File,
   Directory,
-  PreopenDirectory,
+  File,
   type Inode,
+  PreopenDirectory,
 } from "@bjorn3/browser_wasi_shim";
+import { wait_async_polyfill } from "../../src";
+
+wait_async_polyfill();
 
 async function load_external_file(path) {
   return new File(await (await (await fetch(path)).blob()).arrayBuffer());

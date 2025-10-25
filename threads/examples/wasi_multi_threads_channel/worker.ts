@@ -15,6 +15,10 @@ self.onmessage = async (e) => {
         .href,
       // thread_spawn_worker_url: "./thread_spawn.ts",
       thread_spawn_wasm: wasm,
+      worker_background_worker_url: new URL(
+        "./worker_background.ts",
+        import.meta.url,
+      ).href,
     },
   );
 
@@ -22,7 +26,7 @@ self.onmessage = async (e) => {
 
   const inst = await WebAssembly.instantiate(wasm, {
     env: {
-      memory: wasi.get_share_memory(),
+      ...wasi.get_share_memory(),
     },
     wasi: wasi.wasiThreadImport,
     wasi_snapshot_preview1: wasi.wasiImport,

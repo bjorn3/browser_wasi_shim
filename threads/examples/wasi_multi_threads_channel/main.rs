@@ -1,4 +1,6 @@
 // https://doc.rust-lang.org/book/ch16-02-message-passing.html
+// rustc +nightly --target wasm32-wasip1-threads main.rs -o channel_base.wasm -Cstrip=debuginfo -Clto=fat
+// wasm-opt -Oz --enable-multivalue -o channel.wasm channel_base.wasm
 
 use std::sync::mpsc;
 use std::thread;

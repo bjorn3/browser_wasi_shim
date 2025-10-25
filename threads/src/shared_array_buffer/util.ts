@@ -66,3 +66,19 @@ export const get_func_name_from_number = (num: number): string => {
       return "unknown";
   }
 };
+
+export function wrap_async(fn: () => Promise<void>): {
+  promise: Promise<void>;
+  terminate: () => void;
+} {
+  let terminate: () => void = () => {
+    throw new Error("terminate called before async function started");
+  };
+  const promise = new Promise<void>((resolve, reject) => {
+    terminate = () => reject();
+    fn().then((v) => {
+      resolve(v);
+    });
+  });
+  return { promise, terminate };
+}

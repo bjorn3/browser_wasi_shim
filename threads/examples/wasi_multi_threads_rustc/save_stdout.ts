@@ -1,7 +1,10 @@
+import { resolve } from "node:path";
+import { Fd } from "@bjorn3/browser_wasi_shim";
 import { SharedObject, SharedObjectRef } from "@oligami/shared-object";
 import { WASIFarm } from "../../src";
-import { Fd } from "@bjorn3/browser_wasi_shim";
-import { resolve } from "node:path";
+import { wait_async_polyfill } from "../../src";
+
+wait_async_polyfill();
 
 const term = new SharedObjectRef("term").proxy<{
   writeln: (data) => Promise<void>;

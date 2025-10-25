@@ -44,3 +44,13 @@ writeFileSync(
   wrapper_code,
   "utf8",
 );
+
+const wrapper_code_js = `export default function() {
+    ${code}
+}`;
+
+writeFileSync(
+  "./src/shared_array_buffer/worker_background/worker_background_worker_minify.js",
+  wrapper_code_js,
+  "utf8",
+);
