@@ -61,6 +61,23 @@ export class OpenFile extends Fd {
     return wasi.ERRNO_SUCCESS;
   }
 
+  fd_close(): number {
+    // convert file.data back to a non-resizable arraybuffer after
+    // closing, otherwise using it in web api (e.g. creating a
+    // Response object) could throw. see:
+    //
+    // https://webidl.spec.whatwg.org/#AllowResizable
+    // https://issues.chromium.org/issues/40249433
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=1842773
+    if (
+      this.file.data.buffer instanceof ArrayBuffer &&
+      this.file.data.buffer.resizable
+    ) {
+      this.file.data = new Uint8Array(this.file.data);
+    }
+    return wasi.ERRNO_SUCCESS;
+  }
+
   fd_fdstat_get(): { ret: number; fdstat: wasi.Fdstat | null } {
     return { ret: 0, fdstat: new wasi.Fdstat(wasi.FILETYPE_REGULAR_FILE, 0) };
   }
