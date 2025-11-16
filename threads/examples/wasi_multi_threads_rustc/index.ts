@@ -1,8 +1,11 @@
-import { Terminal } from "@xterm/xterm";
-import { WASIFarm } from "../../src";
-import { FitAddon } from "xterm-addon-fit";
-import { SharedObject } from "@oligami/shared-object";
 import { Fd } from "@bjorn3/browser_wasi_shim";
+import { SharedObject } from "@oligami/shared-object";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "xterm-addon-fit";
+import { WASIFarm } from "../../src";
+import { wait_async_polyfill } from "../../src";
+
+wait_async_polyfill();
 
 import "@xterm/xterm/css/xterm.css";
 

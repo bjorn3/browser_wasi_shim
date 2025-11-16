@@ -306,6 +306,7 @@ export class Subscription {
     public eventtype: number,
     public clockid: number,
     public timeout: bigint,
+    public precision: bigint,
     public flags: number,
   ) {}
 
@@ -315,7 +316,8 @@ export class Subscription {
       view.getUint8(ptr + 8),
       view.getUint32(ptr + 16, true),
       view.getBigUint64(ptr + 24, true),
-      view.getUint16(ptr + 36, true),
+      view.getBigUint64(ptr + 32, true),
+      view.getUint16(ptr + 40, true),
     );
   }
 }
@@ -325,12 +327,19 @@ export class Event {
     public userdata: bigint,
     public error: number,
     public eventtype: number,
+    // `eventtype::clock` events ignore this fields
+    public fd_readwrite_nbytes: bigint = 0n,
+    public fd_readwrite_flags: number = 0,
   ) {}
 
   write_bytes(view: DataView, ptr: number) {
     view.setBigUint64(ptr, this.userdata, true);
     view.setUint16(ptr + 8, this.error, true);
     view.setUint8(ptr + 10, this.eventtype);
+    if (this.eventtype !== EVENTTYPE_CLOCK) {
+        view.setBigUint64(ptr + 16, this.fd_readwrite_nbytes, true);
+        view.setUint16(ptr + 24, this.fd_readwrite_flags, true);
+    }
   }
 }
 

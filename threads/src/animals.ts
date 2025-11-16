@@ -1,11 +1,11 @@
 import { WASIProcExit } from "@bjorn3/browser_wasi_shim";
-import type { WASIFarmRef } from "./ref.js";
-import type { WASIFarmRefObject } from "./ref.js";
-import type { FdCloseSender } from "./sender.js";
-import { WASIFarmRefUseArrayBuffer } from "./shared_array_buffer/index.js";
-import type { WASIFarmRefUseArrayBufferObject } from "./shared_array_buffer/index.js";
-import { ThreadSpawner } from "./shared_array_buffer/index.js";
 import { wasi } from "@bjorn3/browser_wasi_shim";
+import type { WASIFarmRef } from "./ref.ts";
+import type { WASIFarmRefObject } from "./ref.ts";
+import type { FdCloseSender } from "./sender.ts";
+import { WASIFarmRefUseArrayBuffer } from "./shared_array_buffer/index.ts";
+import type { WASIFarmRefUseArrayBufferObject } from "./shared_array_buffer/index.ts";
+import { ThreadSpawner } from "./shared_array_buffer/index.ts";
 
 export class WASIFarmAnimal {
   args: Array<string>;
@@ -70,11 +70,16 @@ export class WASIFarmAnimal {
     return [mapped_fd, wasi_ref_n];
   }
 
-  /// Start a WASI command
+  /** Start a WASI command
+  When this function is executed, the WebAssembly (Wasm) code runs on that thread.
+  If the Wasm code throws an error or calls process_exit,
+  the main thread would need to be forcibly terminated. However, since this is not possible, if the Wasm code aborts in a child thread, it will be thrown from the worker_background_worker function. By default, this function is hidden. For detailed usage, please refer to the examples/worker_background_worker.ts file.
+  If you are dealing with programs that may abort,
+  consider using async_start_on_thread or block_start_on_thread instead. */
   start(instance: {
     // FIXME v0.3: close opened Fds after execution
     exports: { memory: WebAssembly.Memory; _start: () => unknown };
-  }) {
+  }): number {
     this.inst = instance;
 
     try {
@@ -101,15 +106,26 @@ export class WASIFarmAnimal {
     }
   }
 
-  /// Start a WASI command on a thread
-  /// If a module has child threads and a child thread throws an error,
-  /// the main thread should also be stopped,
-  /// but there is no way to stop it,
-  /// so the entire worker is stopped.
-  /// If it is not necessary, do not use it.
-  /// Custom imports are not implemented,
-  /// function because it cannot be passed to other threads.
-  /// If the sharedObject library someday supports synchronization, it could be used to support this.
+  /**
+   * This function is similar to start, but it does not handle error and exit code.
+   */
+  start_only(instance: {
+    exports: { memory: WebAssembly.Memory; _start: () => unknown };
+  }) {
+    this.inst = instance;
+    instance.exports._start();
+  }
+
+  /** Start a WASI command on a thread.
+    If the module has child threads and one of them throws an error,
+    the main thread should normally also be stopped.
+    However, since there is no way to stop it,
+    the entire worker will be stopped instead.
+    Do not use this if it is not necessary.
+    If you want to use custom imports,
+    pass the optional instantiate function as an argument
+    to the thread_spawn_on_worker function.
+  */
   async async_start_on_thread(): Promise<number> {
     if (!this.can_thread_spawn || !this.thread_spawner) {
       throw new Error("thread_spawn is not supported");
@@ -121,8 +137,13 @@ export class WASIFarmAnimal {
       throw new Error("what happened?");
     }
 
-    const view = new Uint8Array(this.get_share_memory().buffer);
-    view.fill(0);
+    const memories = this.thread_spawner.get_share_memory();
+    for (const share_memory in memories) {
+      const view = new Uint8Array(memories[share_memory].buffer);
+      view.fill(0);
+    }
+
+    const code_promise = this.thread_spawner.async_wait_done_or_error();
 
     await this.thread_spawner.async_start_on_thread(
       this.args,
@@ -130,11 +151,21 @@ export class WASIFarmAnimal {
       this.fd_map,
     );
 
-    const code = await this.thread_spawner.async_wait_done_or_error();
+    const code = await code_promise;
 
     return code;
   }
 
+  /** Start a WASI command on a thread.
+    If the module has child threads and one of them throws an error,
+    the main thread should normally also be stopped.
+    However, since there is no way to stop it,
+    the entire worker will be stopped instead.
+    Do not use this if it is not necessary.
+    If you want to use custom imports,
+    pass the optional instantiate function as an argument
+    to the thread_spawn_on_worker function.
+  */
   block_start_on_thread(): number {
     if (!this.can_thread_spawn || !this.thread_spawner) {
       throw new Error("thread_spawn is not supported");
@@ -150,8 +181,11 @@ export class WASIFarmAnimal {
       throw new Error("what happened?");
     }
 
-    const view = new Uint8Array(this.get_share_memory().buffer);
-    view.fill(0);
+    const memories = this.thread_spawner.get_share_memory();
+    for (const share_memory in memories) {
+      const view = new Uint8Array(memories[share_memory].buffer);
+      view.fill(0);
+    }
 
     console.log("block_start_on_thread: start");
 
@@ -177,15 +211,7 @@ export class WASIFarmAnimal {
     start_arg: number,
   ) {
     this.inst = instance;
-    try {
-      instance.exports.wasi_thread_start(thread_id, start_arg);
-      return 0;
-    } catch (e) {
-      if (e instanceof WASIProcExit) {
-        return e.code;
-      }
-      throw e;
-    }
+    instance.exports.wasi_thread_start(thread_id, start_arg);
   }
 
   /// Initialize a WASI reactor
@@ -249,6 +275,7 @@ export class WASIFarmAnimal {
         }
         this.map_new_fd(j, i);
       }
+
       wasi_farm_ref.set_park_fds_map(override_fd_map);
 
       // console.log("this.fd_map", this.fd_map);
@@ -333,7 +360,9 @@ export class WASIFarmAnimal {
     }
   }
 
-  get_share_memory(): WebAssembly.Memory {
+  get_share_memory(): {
+    [key: string]: WebAssembly.Memory;
+  } {
     if (!this.thread_spawner) {
       throw new Error("thread_spawner is not defined");
     }
@@ -350,6 +379,10 @@ export class WASIFarmAnimal {
       thread_spawn_worker_url?: string;
       thread_spawn_wasm?: WebAssembly.Module;
       hand_override_fd_map?: Array<[number, number]>;
+      worker_background_worker_url?: string;
+      share_memory?: {
+        [key: string]: WebAssembly.Memory;
+      };
     } = {},
     override_fd_maps?: Array<number[]>,
     thread_spawner?: ThreadSpawner,
@@ -406,10 +439,11 @@ export class WASIFarmAnimal {
         this.thread_spawner = new ThreadSpawner(
           options.thread_spawn_worker_url,
           wasi_farm_refs_tmp,
-          undefined,
+          options.share_memory,
           undefined,
           undefined,
           options.thread_spawn_wasm,
+          options.worker_background_worker_url,
         );
       }
     }
@@ -1243,9 +1277,60 @@ export class WASIFarmAnimal {
         const path = buffer8.slice(path_ptr, path_ptr + path_len);
         return wasi_farm_ref.path_unlink_file(mapped_fd, path);
       },
-      poll_oneoff(_in_, _out, _nsubscriptions) {
-        self.check_fds();
-        throw "async io not supported";
+      poll_oneoff(
+        in_ptr: number,
+        out_ptr: number,
+        nsubscriptions: number,
+        stored_events_count_ptr: number,
+      ): number {
+        if (nsubscriptions === 0) {
+          return wasi.ERRNO_INVAL;
+        }
+        // TODO: For now, we only support a single subscription just to be enough for wasi-libc's
+        // clock_nanosleep.
+        if (nsubscriptions > 1) {
+          console.error("poll_oneoff: only a single subscription is supported");
+          return wasi.ERRNO_NOTSUP;
+        }
+
+        // Read a subscription from the in buffer
+        const buffer = new DataView(self.inst!.exports.memory.buffer);
+        const s = wasi.Subscription.read_bytes(buffer, in_ptr);
+        const eventtype = s.eventtype;
+        const clockid = s.clockid;
+        const timeout = s.timeout;
+        // TODO: For now, we only support clock subscriptions.
+        if (eventtype !== wasi.EVENTTYPE_CLOCK) {
+          console.error("poll_oneoff: only clock subscriptions are supported");
+          return wasi.ERRNO_NOTSUP;
+        }
+
+        // Select timer
+        let getNow: (() => bigint) | undefined = undefined;
+        if (clockid === wasi.CLOCKID_MONOTONIC) {
+          getNow = () => BigInt(Math.round(performance.now() * 1_000_000));
+        } else if (clockid === wasi.CLOCKID_REALTIME) {
+          getNow = () => BigInt(new Date().getTime()) * 1_000_000n;
+        } else {
+          return wasi.ERRNO_INVAL;
+        }
+
+        // Perform the wait
+        const endTime =
+          ((s.flags & wasi.SUBCLOCKFLAGS_SUBSCRIPTION_CLOCK_ABSTIME) !== 0
+            ? timeout
+            : getNow() + timeout) - s.precision;
+        while (endTime > getNow()) {
+          // block until the timeout is reached
+        }
+
+        // Write an event to the out buffer
+        const event = new wasi.Event(s.userdata, wasi.ERRNO_SUCCESS, eventtype);
+        event.write_bytes(buffer, out_ptr);
+
+        buffer.setUint32(stored_events_count_ptr, 1, true);
+
+        return wasi.ERRNO_SUCCESS;
       },
       proc_exit(exit_code: number) {
         self.check_fds();

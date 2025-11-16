@@ -1,9 +1,9 @@
 // https://zenn.dev/seapolis/articles/3605c4befc8465
 
 import { resolve } from "node:path";
+import swc from "unplugin-swc";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
-import swc from "unplugin-swc";
 
 export default defineConfig({
   server: {

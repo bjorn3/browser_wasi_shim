@@ -828,6 +828,7 @@ export default class WASI {
         in_ptr: number,
         out_ptr: number,
         nsubscriptions: number,
+        stored_events_count_ptr: number,
       ): number {
         if (nsubscriptions === 0) {
           return wasi.ERRNO_INVAL;
@@ -863,9 +864,9 @@ export default class WASI {
 
         // Perform the wait
         const endTime =
-          (s.flags & wasi.SUBCLOCKFLAGS_SUBSCRIPTION_CLOCK_ABSTIME) !== 0
+          ((s.flags & wasi.SUBCLOCKFLAGS_SUBSCRIPTION_CLOCK_ABSTIME) !== 0
             ? timeout
-            : getNow() + timeout;
+            : getNow() + timeout) - s.precision;
         while (endTime > getNow()) {
           // block until the timeout is reached
         }
@@ -873,6 +874,8 @@ export default class WASI {
         // Write an event to the out buffer
         const event = new wasi.Event(s.userdata, wasi.ERRNO_SUCCESS, eventtype);
         event.write_bytes(buffer, out_ptr);
+
+        buffer.setUint32(stored_events_count_ptr, 1, true);
 
         return wasi.ERRNO_SUCCESS;
       },
