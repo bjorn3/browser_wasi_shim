@@ -2,3 +2,4 @@ node_modules/
 dist/
 typings/
 .vscode/
+__pycache__
