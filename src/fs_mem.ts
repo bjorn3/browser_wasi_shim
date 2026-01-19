@@ -2,6 +2,46 @@ import { debug } from "./debug.js";
 import * as wasi from "./wasi_defs.js";
 import { Fd, Inode } from "./fd.js";
 
+function dataResize(data: Uint8Array, newDataSize: number): Uint8Array {
+  // reuse same data if not actually resizing
+  if (data.byteLength === newDataSize) {
+    return data;
+  }
+
+  // prefer using
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer/resize
+  // when applicable; can be used to shrink/grow
+  if (
+    data.buffer instanceof ArrayBuffer &&
+    data.buffer.resizable &&
+    newDataSize <= data.buffer.maxByteLength
+  ) {
+    data.buffer.resize(newDataSize);
+    return data;
+  }
+
+  // shrinking: create a new resizable ArrayBuffer and copy a subset
+  // of old data onto it
+  if (data.byteLength > newDataSize) {
+    const newBuffer = new ArrayBuffer(newDataSize, {
+      maxByteLength: newDataSize,
+    });
+    const newData = new Uint8Array(newBuffer);
+    newData.set(new Uint8Array(data.buffer, 0, newDataSize));
+    return newData;
+  }
+
+  // growing: create a new resizable ArrayBuffer with exponential
+  // growth of maxByteLength, to avoid O(n^2) overhead of repeatedly
+  // concatenating buffers when doing a lot of small writes at the end
+  const newBuffer = new ArrayBuffer(newDataSize, {
+    maxByteLength: Math.max(newDataSize, data.buffer.maxByteLength * 2),
+  });
+  const newData = new Uint8Array(newBuffer);
+  newData.set(data);
+  return newData;
+}
+
 export class OpenFile extends Fd {
   file: File;
   file_pos: bigint = 0n;
@@ -12,13 +52,28 @@ export class OpenFile extends Fd {
   }
 
   fd_allocate(offset: bigint, len: bigint): number {
-    if (this.file.size > offset + len) {
+    if (this.file.size >= offset + len) {
       // already big enough
     } else {
       // extend
-      const new_data = new Uint8Array(Number(offset + len));
-      new_data.set(this.file.data, 0);
-      this.file.data = new_data;
+      this.file.data = dataResize(this.file.data, Number(offset + len));
+    }
+    return wasi.ERRNO_SUCCESS;
+  }
+
+  fd_close(): number {
+    // convert file.data back to a non-resizable arraybuffer after
+    // closing, otherwise using it in web api (e.g. creating a
+    // Response object) could throw. see:
+    //
+    // https://webidl.spec.whatwg.org/#AllowResizable
+    // https://issues.chromium.org/issues/40249433
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=1842773
+    if (
+      this.file.data.buffer instanceof ArrayBuffer &&
+      this.file.data.buffer.resizable
+    ) {
+      this.file.data = new Uint8Array(this.file.data);
     }
     return wasi.ERRNO_SUCCESS;
   }
@@ -28,17 +83,7 @@ export class OpenFile extends Fd {
   }
 
   fd_filestat_set_size(size: bigint): number {
-    if (this.file.size > size) {
-      // truncate
-      this.file.data = new Uint8Array(
-        this.file.data.buffer.slice(0, Number(size)),
-      );
-    } else {
-      // extend
-      const new_data = new Uint8Array(Number(size));
-      new_data.set(this.file.data, 0);
-      this.file.data = new_data;
-    }
+    this.file.data = dataResize(this.file.data, Number(size));
     return wasi.ERRNO_SUCCESS;
   }
 
@@ -91,11 +136,10 @@ export class OpenFile extends Fd {
     if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten: 0 };
 
     if (this.file_pos + BigInt(data.byteLength) > this.file.size) {
-      const old = this.file.data;
-      this.file.data = new Uint8Array(
+      this.file.data = dataResize(
+        this.file.data,
         Number(this.file_pos + BigInt(data.byteLength)),
       );
-      this.file.data.set(old);
     }
 
     this.file.data.set(data, Number(this.file_pos));
@@ -107,9 +151,10 @@ export class OpenFile extends Fd {
     if (this.file.readonly) return { ret: wasi.ERRNO_BADF, nwritten: 0 };
 
     if (offset + BigInt(data.byteLength) > this.file.size) {
-      const old = this.file.data;
-      this.file.data = new Uint8Array(Number(offset + BigInt(data.byteLength)));
-      this.file.data.set(old);
+      this.file.data = dataResize(
+        this.file.data,
+        Number(offset + BigInt(data.byteLength)),
+      );
     }
 
     this.file.data.set(data, Number(offset));
