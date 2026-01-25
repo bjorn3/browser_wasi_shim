@@ -887,20 +887,11 @@ export default class WASI {
         const buffer8 = new Uint8Array(
           self.inst.exports.memory.buffer,
         ).subarray(buf, buf + buf_len);
-
-        if (
-          "crypto" in globalThis &&
-          (typeof SharedArrayBuffer === "undefined" ||
-            !(self.inst.exports.memory.buffer instanceof SharedArrayBuffer))
-        ) {
-          for (let i = 0; i < buf_len; i += 65536) {
-            crypto.getRandomValues(buffer8.subarray(i, i + 65536));
-          }
-        } else {
-          for (let i = 0; i < buf_len; i++) {
-            buffer8[i] = (Math.random() * 256) | 0;
-          }
+        const tmp = new Uint8Array(buf_len);
+        for (let i = 0; i < buf_len + 65536; i += 65536) {
+          crypto.getRandomValues(tmp.subarray(i, i + 65536));
         }
+        buffer8.set(tmp, 0);
       },
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       sock_recv(fd: number, ri_data, ri_flags) {
