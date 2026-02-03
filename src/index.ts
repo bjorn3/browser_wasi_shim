@@ -5,6 +5,7 @@ export { Fd, Inode } from "./fd.js";
 export {
   File,
   Directory,
+  InodeMem,
   OpenFile,
   OpenDirectory,
   PreopenDirectory,
